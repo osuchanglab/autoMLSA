@@ -12,59 +12,59 @@ For questions about your PATH, see [this link](https://superuser.com/questions/2
 
 1. Edit line 43 to include your e-mail address. Your e-mail address will only be used to query the NCBI databases using the E-utilites. This is to allow NCBI to contact you if there is a problem with your requests or if you are abusing the system.
 
- Make the change:
+   Make the change:
 
-```perl
-my $email = '';
-```
-to
-```perl
-my $email = 'youremail@yourschool.edu';
-```
+    ```perl
+    my $email = '';
+    ```
+    to
+    ```perl
+    my $email = 'youremail@yourschool.edu';
+    ```
 
 2. Edit line 53 to the path of your blast executables if they are not in your PATH.
 
 3. If you wish to include autoMLSA.pl in your path, but don't want to move the ./scripts folder to the same location, put the full path to the scripts folder in line 57. For example:
 
-  * Move autoMLSA.pl to a location in your PATH (e.g. /usr/bin or /usr/local/bin or ~/bin)
-  * Add the full path to the unpacked scripts directory to line 57 (eg. ~/libs/autoMLSA/scripts)
+    * Move autoMLSA.pl to a location in your PATH (e.g. /usr/bin or /usr/local/bin or ~/bin)
+    * Add the full path to the unpacked scripts directory to line 57 (eg. ~/libs/autoMLSA/scripts)
 
 4. Add the full path to the Gblocks to line 56 if it is not in your PATH.
 
 5. You can also change the optional defaults starting on line 69 if you are interested in changing them. For example:
 Change your 'prog' from 'tblastn':
 
-```perl
-my %defaults = (
-                 'prog'         = 'tblastn',
-                 'nr'           = 1,
-                 'complete'     = 1,
-                 'wgs'          = 0,
-                 'evalue'       = '1e-5',
-                 'wgs_evalue'   = '1e-25',
-                 'local_evalue' = '1e-5',
-                 'target'       = 250,
-                 'coverage'     = 50
-               );
-```
-
-To 'blastn':
-
-```perl
-my %defaults = (
-                 'prog'         = 'blastn',
-                 'nr'           = 1,
-                 'complete'     = 1,
-                 'wgs'          = 0,
-                 'evalue'       = '1e-5',
-                 'wgs_evalue'   = '1e-25',
-                 'local_evalue' = '1e-5',
-                 'target'       = 250,
-                 'coverage'     = 50
-               );
-```
-
-If you are interested in making blastn the default rather than tblastn.
+    ```perl
+    my %defaults = (
+                     'prog'         = 'tblastn',
+                     'nr'           = 1,
+                     'complete'     = 1,
+                     'wgs'          = 0,
+                     'evalue'       = '1e-5',
+                     'wgs_evalue'   = '1e-25',
+                     'local_evalue' = '1e-5',
+                     'target'       = 250,
+                     'coverage'     = 50
+                   );
+    ```
+    
+    To 'blastn':
+    
+    ```perl
+    my %defaults = (
+                     'prog'         = 'blastn',
+                     'nr'           = 1,
+                     'complete'     = 1,
+                     'wgs'          = 0,
+                     'evalue'       = '1e-5',
+                     'wgs_evalue'   = '1e-25',
+                     'local_evalue' = '1e-5',
+                     'target'       = 250,
+                     'coverage'     = 50
+                   );
+    ```
+    
+    If you are interested in making blastn the default rather than tblastn.
 
 6. If you plan on using RAxML, add the path to your RAxML executables to line 40 of autoMLSA-raxml.pl if they are not in your PATH.
 
