@@ -108,21 +108,21 @@ Minimally, two pieces of data are required to complete a full run:
 
 You will need all of the gene sequences (nt or aa) from a reference organism, and the sequences can be contained in a single multi-FASTA file, or multiple single FASTA files. In general, best practice would include renaming the FASTA header to the gene of interest. For example:
 
->gi|84028820|sp|P0AES6.2|GYRB\_ECOLI RecName: Full=DNA gyrase subunit B; AltName: Full=Type IIA topoisomerase subunit GyrB
+`>gi|84028820|sp|P0AES6.2|GYRB_ECOLI RecName: Full=DNA gyrase subunit B; AltName: Full=Type IIA topoisomerase subunit GyrB`
 
 Should be:
 
->gyrB gi|84028820|sp|P0AES6.2|GYRB\_ECOLI RecName: Full=DNA gyrase subunit B; AltName: Full=Type IIA topoisomerase subunit GyrB
+`>gyrB gi|84028820|sp|P0AES6.2|GYRB_ECOLI RecName: Full=DNA gyrase subunit B; AltName: Full=Type IIA topoisomerase subunit GyrB`
 
 This is not completely necessary, but will help with naming files in a meaningful way throughout the process. The FASTA header ID (everything before the first space) is used to name the output files pertaining to each marker gene used.
 
 If you are only interested in sequences found in NCBI (nt, wgs, or both databases), then this will be all you need. You will run the program like this:
 
-autoMLSA.pl -email yourname@yourinstitution.edu -runid sample\_run\_id -wgs -threads 4 -entrez\_query "YourTaxonomyTerm[ORGANISM]" -- markers.fasta
+`autoMLSA.pl -email yourname@yourinstitution.edu -runid sample_run_id -wgs -threads 4 -entrez_query "YourTaxonomyTerm[ORGANISM]" -- markers.fasta`
 
 Output will be sample\_run\_id.concat.derep and sample\_run\_id.partition, and the substitution model to supply to RAxML is printed to the screen and present in the log file at the end of the run.
 
-By default, a protein query is expected, and a tblastn analysis is done. This helps eliminate any annotation discrepencies with genomes present in the NCBI nt and wgs databases. Alignment software can more accurately align protein sequences and accurate alignments are preferred in most cases, with the cost being less phylogenetic resolution. Empirically, the default cutoffs for coverage and evalue are reasonable. Depending on the size of your clade of interest, you will have to increase the target cutoff to a larger value, especially for clades with several well represented species.
+By default, a protein query is expected, and a TBLASTN analysis is done. This helps eliminate any annotation discrepencies with genomes present in the NCBI nt and wgs databases. Alignment software can more accurately align protein sequences and accurate alignments are preferred in most cases, with the cost being less phylogenetic resolution. Empirically, the default cutoffs for coverage and evalue are reasonable. Depending on the size of your clade of interest, you will have to increase the target cutoff to a larger value, especially for clades with several well represented species.
 
 ## Generating a phylogenetic tree using autoMLSA-raxml.pl
 
@@ -152,7 +152,7 @@ If you are interested in re-rooting the tree, you would provide the full strain 
 
 The .nwk files can be viewed with any phylogenetic tree software, and we recommend using [iTOL online](http://itol.embl.de/).
 
-## Using a local blast database
+## Using a local BLAST database
 
 When using your own BLAST database, the FASTA files have to be formatted properly prior to BLAST DB generation, excluding any FASTA files that have been downloaded from NCBI (if the FASTA files have a recognizable accession number, they will be detected). FASTA files containing the genome sequence need to be formatted properly to be recognized and understood by autoMLSA. This process can be accomplished with the fasta\_format.pl script located in the autoMLSA/scripts folder. The formatting script expects each genome to be contained in an individual FASTA file, with the format of strainName.fasta. 
 
@@ -264,7 +264,7 @@ Flags the run for trimming with Gblocks.
 
 **-gblocks_params**
 
-Can flag for gblocks to run with additional parameters using -gblocks_params='-b3=10 -b4=5 -b5=h' syntax at the commandline.
+Can flag for gblocks to run with additional parameters using -gblocks\_params='-b3=10 -b4=5 -b5=h' syntax at the commandline.
 
 **-rereplicate** (filename)
 
