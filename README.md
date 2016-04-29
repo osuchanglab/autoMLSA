@@ -92,7 +92,9 @@ Optional
 
 # Pipeline Description
 
-This pipeline uses a set of input marker sequences for a BLAST search, finds the corresponding gene or protein sequences in the target BLAST databases (nt, wgs, and custom local databases), determines an appropriate organism name using information present in the NCBI taxonomy and nucleotide databases, determines which genomes have all genes of interest, aligns each gene individually, filters identical alignments with a log file to help determine which alignments are identical, determines the appropriate substitution model for each gene, and then concatenates the genes into an alignment while saving the partition data. The output from the main script is a concatenated alignment file, the appropriate substitution model to provide to RAxML, and a paritioned dataset file that is formatted properly for input into RAxML. The RAxML wrapper provided along with the main script (autoMLSA-raxml.pl) will allow you to generate a phylogenetic tree based on the MLSA dataset. Alternatively, you can use these files to do your own custom analysis using RAxML or other phylogenetic tree generation software.
+This pipeline uses a set of input marker sequences for a BLAST search, finds the corresponding gene or protein sequences in the target BLAST databases (nt, wgs, and custom local databases), determines an appropriate organism name using information present in the NCBI taxonomy and nucleotide databases, determines which genomes have all genes of interest, aligns each gene individually, filters identical alignments with a log file to help determine which alignments are identical, determines the appropriate substitution model for each gene, and then concatenates the genes into an alignment while saving the partition data.
+
+The output from the main script is a concatenated alignment file, the appropriate substitution model to provide to RAxML, and a partitioned dataset file that is formatted properly for input into RAxML. The RAxML wrapper provided along with the main script (autoMLSA-raxml.pl) will allow you to generate a phylogenetic tree based on the MLSA dataset. Alternatively, you can use these files to do your own custom analysis using RAxML or other phylogenetic tree generation software.
 
 # Usage
 
@@ -126,53 +128,57 @@ By default, a protein query is expected, and a tblastn analysis is done. This he
 
 The files required for autoMLSA-raxml.pl will be printed at the end of the autoMLSA.pl run. You will use them like so:
 
-autoMLSA-raxml.pl -runid sample\_run\_id -partition sample\_run\_id/sample\_run\_id.partition -model PROTGAMMALG -alignment sample\_run\_id/sample\_run\_id.concat.derep -SSE3 -PTHREADS 8 -initial
+`autoMLSA-raxml.pl -runid sample_run_id -partition sample_run_id/sample_run_id.partition -model PROTGAMMALG -alignment sample_run_id/sample_run_id.concat.derep -SSE3 -PTHREADS 8 -initial`
 
 After that completes, you would run the mlsearch and bootstrap programs:
 
-autoMLSA-raxml.pl -runid sample\_run\_id -partition sample\_run\_id/sample\_run\_id.partition -model PROTGAMMALG -alignment sample\_run\_id/sample\_run\_id.concat.derep -SSE3 -PTHREADS 16 -mlsearch
+`autoMLSA-raxml.pl -runid sample_run_id -partition sample_run_id/sample_run_id.partition -model PROTGAMMALG -alignment sample_run_id/sample_run_id.concat.derep -SSE3 -PTHREADS 16 -mlsearch`
 
-autoMLSA-raxml.pl -runid sample\_run\_id -partition sample\_run\_id/sample\_run\_id.partition -model PROTGAMMALG -alignment sample\_run\_id/sample\_run\_id.concat.derep -SSE3 -PTHREADS 8 -boostrap
+`autoMLSA-raxml.pl -runid sample_run_id -partition sample_run_id/sample_run_id.partition -model PROTGAMMALG -alignment sample_run_id/sample_run_id.concat.derep -SSE3 -PTHREADS 8 -boostrap`
 
 By default, 100 ML searches are performed, and the bootstrap analysis completes based upon the autoMRE bootstopping criterion.
 
 After both the ML search and bootstrap analysis complete, you can generate the final trees with this command:
 
-autoMLSA-raxml.pl -runid sample\_run\_id -partition sample\_run\_id/sample\_run\_id.partition -model PROTGAMMALG -alignment sample\_run\_id/sample\_run\_id.concat.derep -SSE3 -final
+`autoMLSA-raxml.pl -runid sample_run_id -partition sample_run_id/sample_run_id.partition -model PROTGAMMALG -alignment sample_run_id/sample_run_id.concat.derep -SSE3 -final`
 
 The trees will take the form of:
 
-RAxML\_bipartitions.sample\_run\_id.final.nwk and RAxML\_bipartitionsBranchLabels.sample\_run\_id.final.nwk
+`RAxML_bipartitions.sample_run_id.final.nwk` 
+and 
+`RAxML_bipartitionsBranchLabels.sample_run_id.final.nwk`
 
-If you are interested in re-rooting the tree, you would provide the full strain name with -outgroup "Escherichia\_coli\_K12" or a group of strains with -outgroup "Escherichia\_coli\_K12,Escherichia\_coli\_DSM\_30083"
+If you are interested in re-rooting the tree, you would provide the full strain name with: `-outgroup "Escherichia_coli_K12"` or a group of strains with `-outgroup "Escherichia_coli_K12,Escherichia_coli_DSM_30083"`
 
 The .nwk files can be viewed with any phylogenetic tree software, and we recommend using [iTOL online](http://itol.embl.de/).
 
 ## Using a local blast database
 
-When using your own BLAST database, the FASTA files have to be formatted properly prior to BLAST DB generation, excluding any FASTA files that have been downloaded from NCBI (if the FASTA files have a recognizable accession number, they will be detected). FASTA files containing the genome sequence need to be formatted properly to be recognized and understood by autoMLSA. This process can be accomplished with the fasta\_format.pl script located in the autoMLSA/scripts folder. The formatting script expects each genome to be contained in an individual FASTA file, with the format of strainName.fasta. For example, if you were using the Escherichia coli strain K12, the genome file would be named K12.fasta. You would then provide the species name with the -genome flag:
+When using your own BLAST database, the FASTA files have to be formatted properly prior to BLAST DB generation, excluding any FASTA files that have been downloaded from NCBI (if the FASTA files have a recognizable accession number, they will be detected). FASTA files containing the genome sequence need to be formatted properly to be recognized and understood by autoMLSA. This process can be accomplished with the fasta\_format.pl script located in the autoMLSA/scripts folder. The formatting script expects each genome to be contained in an individual FASTA file, with the format of strainName.fasta. 
 
-autoMLSA/scripts/fasta\_format.pl -genome 'Escherichia coli' -overwrite K12.fasta
+For example, if you were using the Escherichia coli strain K12, the genome file would be named K12.fasta. You would then provide the species name with the -genome flag:
+
+`autoMLSA/scripts/fasta_format.pl -genome 'Escherichia coli' -overwrite K12.fasta`
 
 If you had several genomes with the appropriate file names in a particular directory, you would do this:
 
-autoMLSA/scripts/fasta\_format.pl -genome 'Escherichia coli' -overwrite \*.fasta
+`autoMLSA/scripts/fasta_format.pl -genome 'Escherichia coli' -overwrite *.fasta`
 
 You must be careful with this rename script, as it will overwrite each file in turn, so preferably you would make a copy of each genome to convert to autoMLSA format.
 
 The autoMLSA format is straightforward. For example:
 
->gnl|K12|contig1 [Escherichia coli K12]
+`>gnl|K12|contig1 [Escherichia coli K12]`
 
 The strain identifier is in the second field, and is used to link all of the sequences from this organism together. The full strain name is in square braces in the FASTA description field.
 
-After all of the genome sequences are formatted properly using the fasta\_format.pl script (or manually), then you must concatenate all of the genome sequences into one file (cat \*.fasta * all.fas) works well on \*nix based systems. Then, using the makeblastdb tool provided with the NCBI BLAST suite, you would create the local bast DB as below:
+After all of the genome sequences are formatted properly using the fasta\_format.pl script (or manually), then you must concatenate all of the genome sequences into one file. `cat *.fasta * all.fas` works well on \*nix based systems and under cygwin. Then, using the makeblastdb tool provided with the NCBI BLAST suite, you would create the local bast DB as below:
 
-makeblastdb -dbtype prot -in all.fas
+`makeblastdb -dbtype prot -in all.fas`
 
 You would provide the full path to this database like so:
 
-autoMLSA.pl -email yourname@yourinstitution.edu -runid sample\_run\_id -wgs -threads 4 -entrez\_query "YourTaxonomyTerm[ORGANISM]" -local\_db /path/to/all.fas -- markers.fasta
+`autoMLSA.pl -email yourname@yourinstitution.edu -runid sample_run_id -wgs -threads 4 -entrez_query "YourTaxonomyTerm[ORGANISM]" -local_db /path/to/all.fas -- markers.fasta`
 
 If you have several local BLAST DBs, you must name them all uniquely, otherwise the results will be overwritten, and sequences from only one of the BLAST DBs will be contained in the final output.
 
@@ -250,7 +256,13 @@ Supply a string in quotes that will be added to the end of the alignment program
 
 **-gblocks**
 
-Can flag for gblocks to run without any additional parameters, or provide parameters using -gblocks='-b3=10 -b4=5 -b5=h' syntax at the commandline.
+Run Gblocks to trim out gappy parts of the alignment.
+
+Flags the run for trimming with Gblocks.
+
+**-gblocks_params**
+
+Can flag for gblocks to run with additional parameters using -gblocks_params='-b3=10 -b4=5 -b5=h' syntax at the commandline.
 
 **-rereplicate** (filename)
 
