@@ -313,11 +313,11 @@ Flag required to continue when .manual files are present.  Fix the genome names 
 
 # Citations
 
-`Stamatakis, A. (2014). RAxML version 8: a tool for phylogenetic analysis and post-analysis of large phylogenies. Bioinformatics 30(9):1312–1313. https://doi.org/10.1093/bioinformatics/btu033
+Stamatakis, A. (2014). RAxML version 8: a tool for phylogenetic analysis and post-analysis of large phylogenies. Bioinformatics 30(9):1312–1313. https://doi.org/10.1093/bioinformatics/btu033
 
 Katoh, K, Standley, DM. (2013). MAFFT Multiple Sequence Alignment Software Version 7: Improvements in Performance and Usability. Mol. Biol. Evol. 30(4):772–780. https://doi.org/10.1093/molbev/mst010
 
-Dress, AWM, Flamm, C, Fritzsch, G, Grünewald, S, Kruspe, M, Prohaska, SJ, & Stadler, PF. (2008). Noisy: identification of problematic columns in multiple sequence alignments. Algorithms for Molecular Biology : AMB, 3, 7. http://doi.org/10.1186/1748-7188-3-7`
+Dress, AWM, Flamm, C, Fritzsch, G, Grünewald, S, Kruspe, M, Prohaska, SJ, & Stadler, PF. (2008). Noisy: identification of problematic columns in multiple sequence alignments. Algorithms for Molecular Biology : AMB, 3, 7. http://doi.org/10.1186/1748-7188-3-7
 
 
 # History
