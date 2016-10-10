@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 #######################################################################
 #
 # COPYRIGHT NOTICE
@@ -46,6 +46,7 @@ my %above;
 my %below;
 my %scinames;
 my %check;
+my $badbase =  qr/[JOUBZ]/;
 
 my $signal = GetOptions ( 'log:s' => \$logging,
                           'quiet' => \$quiet,
@@ -161,6 +162,11 @@ while ( <$fh> ) {
 
     if ($accn =~ /\.[0-9]+/) {
         $accn =~ s/\.[0-9]+//;
+    }
+
+    if ( $sseq =~ $badbase ) {
+        logger("Bad residue (J, O, or U) found in $accn. Check BLAST output file ($infile) for more information.\n");
+        next;
     }
     if ($matched == 0) {
         if ($stitle =~ /\[/ && $stitle =~ /\]/) {

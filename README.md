@@ -1,3 +1,5 @@
+**This is a work in progress. I am attempting to fix the script to accomodate changes that NCBI has made since implementing https everywhere and removing some support for GI numbers. Stay tuned.**
+
 # autoMLSA 
 
 The goal of this project is to enable users to generate high quality and robust **M**ulti-**L**ocus **S**equence **A**lignment phylogenetic trees with minimal effort. The default settings for the software work in many situations, and the software as a whole works with minimal user intervention. 
@@ -77,8 +79,8 @@ Required
 * BLAST+ version 2.2.31+
 * Perl version 5.10.1 or higher
 * Perl Modules
-  * BioPerl (Bio::Perl) v1.6.923, other versions might work but are unsupported
-  * BioPerl Eutilities (Bio::DB::EUtilities) v1.73
+  * BioPerl (Bio::Perl) v1.7.005 [(1.007000\_005)](http://search.cpan.org/~cjfields/BioPerl-1.007000_005/)
+  * BioPerl Eutilities (Bio::DB::EUtilities) v1.73 manual update from [github](https://github.com/bioperl/Bio-EUtilities)
 
 Multiple Sequence Alignment software
 * [MAFFT v7](http://mafft.cbrc.jp/alignment/software/) **recommended**
@@ -88,7 +90,8 @@ Phylogenetic Tree Inference software
 
 Optional
 
-* [Gblocks](http://molevol.cmima.csic.es/castresana/Gblocks.html)
+* [Gblocks](http://molevol.cmima.csic.es/castresana/Gblocks.html) - No longer recommended. See [Tan et al. 2015](http://sysbio.oxfordjournals.org/content/64/5/778) as to why.
+* [noisy](http://www.bioinf.uni-leipzig.de/Software/noisy/) **recommended** See [Tan et al. 2015](http://sysbio.oxfordjournals.org/content/64/5/778) for benchmarking of alignment filtering software.
 
 # Pipeline Description
 
@@ -236,7 +239,7 @@ Option searches for complete records only.  Adds "AND complete genome" to search
 
 Searches the nr/nt database.
 
-**-wgs** [off]
+**-wgs** [off] \(No longer supported by NCBI. Working on fix.)
 
 Includes a separate search for wgs-deposited sequences.
 
@@ -256,15 +259,13 @@ The linsi algorithm of mafft is listed by default.  Any alignment program that p
 
 Supply a string in quotes that will be added to the end of the alignment program for program specific commands. (e.g. '--legacygappenalty' for mafft)
 
-**-gblocks**
+**-trimmer** (gblocks OR noisy)
 
-Run Gblocks to trim out gappy parts of the alignment.
+Run Gblocks or noisy to trim out gappy parts of the alignment.
 
-Flags the run for trimming with Gblocks.
+**-trimmer_params**
 
-**-gblocks_params**
-
-Can flag for gblocks to run with additional parameters using -gblocks\_params='-b3=10 -b4=5 -b5=h' syntax at the commandline.
+Can flag for trimmer to run with additional parameters using -trimmer\_params='-b3=10 -b4=5 -b5=h' syntax at the commandline. noisy will automatically set seqtype parameter.
 
 **-rereplicate** (filename)
 
@@ -302,15 +303,26 @@ Example: For looking only at Actinobacteria, use 'Actinobacteria[ORGANISM]'
 
 Removes all files generated after BLAST search output.  Allows for restarting of jobs that may have failed and cannot continue due to unusual circumstances.
 
-**-halt**
+**-checkpoint** (fasta OR model)
 
-Stops script prior to filtering for genes found in all genomes.  Useful for acquiring gene sequences without requiring completion of the entire pipeline.
+Stops script prior to filtering for genes found in all genomes or prior to alignment.  Useful for acquiring gene sequences without requiring completion of the entire pipeline, or doing the BLAST searches using a slower machine, saving the alignments for a more powerful machine.
 
 **-concat**
 
 Flag required to continue when .manual files are present.  Fix the genome names in the manual files and supply -concat to continue. 
 
+# Citations
+
+`Stamatakis, A. (2014). RAxML version 8: a tool for phylogenetic analysis and post-analysis of large phylogenies. Bioinformatics 30(9):1312–1313. https://doi.org/10.1093/bioinformatics/btu033
+
+Katoh, K, Standley, DM. (2013). MAFFT Multiple Sequence Alignment Software Version 7: Improvements in Performance and Usability. Mol. Biol. Evol. 30(4):772–780. https://doi.org/10.1093/molbev/mst010
+
+Dress, AWM, Flamm, C, Fritzsch, G, Grünewald, S, Kruspe, M, Prohaska, SJ, & Stadler, PF. (2008). Noisy: identification of problematic columns in multiple sequence alignments. Algorithms for Molecular Biology : AMB, 3, 7. http://doi.org/10.1186/1748-7188-3-7`
+
+
 # History
+
+v1.0.1 - 2016-10-10 - Dev branch started.
 
 v1.0 - 2016-04-20 - First revision released to GitHub.
 

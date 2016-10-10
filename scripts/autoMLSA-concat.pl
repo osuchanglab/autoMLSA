@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 #######################################################################
 #
 # COPYRIGHT NOTICE
@@ -125,7 +125,7 @@ while (<KEYFILE>) {
         my $value = 2 + $candidatus + $subsp;
         if ( $test == $value ) {
             $header = $guess;
-            if ( $gbname ) {
+            if ( $gbname ne 'NULL' ) {
                 if ($sciname ne $gbname) {
                     $header = $gbname;
                 }

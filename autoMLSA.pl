@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 #######################################################################
 #
 # COPYRIGHT NOTICE
@@ -39,6 +39,8 @@ use Bio::DB::EUtilities;
 use File::Spec;
 use Cwd 'abs_path';
 
+my $version = '1.0.1';
+my $date = 'October 10, 2016';
 my $email = '';    #Can set to default
 
 #Setting up paths properly
@@ -53,6 +55,7 @@ $sdir .= "scripts/";
 my $localblastdir = '';
 
 my $gblockspath = 'Gblocks';    #Change to /path/to/Gblocks if not in PATH
+my $noisypath = 'noisy';        #Change to /path/to/noisy if not in PATH
 my $scriptdir   = ''
   ; #can change this to '/path/to/scriptdir/' if all scripts below are in the same directory outside of ./scripts
 my $proteinmodelpath =
@@ -75,7 +78,7 @@ my %defaults = (
                  'evalue'       => '1e-5',
                  'wgs_evalue'   => '1e-25',
                  'local_evalue' => '1e-5',
-                 'target'       => 250,
+                 'target'       => 500,
                  'coverage'     => 50
                );
 
@@ -103,7 +106,8 @@ my %options = (
                 'email'  => \$email,
                 'runid'  => \$runid,
                 'config' => \$config,
-                'log'    => \$log
+                'log'    => \$log,
+                'version' => 0
               );
 
 
@@ -123,16 +127,24 @@ my $signal = GetOptions(
                          'complete!',          'wgs!',
                          'local_db=s@',        'threads=i',
                          'align_prog=s',       'align_params=s',
-                         'gblocks',            'rereplicate:s',
+                         'trimmer=s',            'rereplicate:s',
                          'cleanup',            'log!',
                          'clear_input',        'clear_dbs',
                          'debug_cleanup',      'concat',
-                         'halt',               'gblocks_params=s'
+                         'checkpoint=s',               'trimmer_params=s',
+                         'version|v'
                        );
 
 #Print help statements if specified
 pod2usage( -verbose => 1 ) if $options{help} == 1;
 pod2usage( -verbose => 2 ) if $options{man} == 1;
+
+#Print version statements if specified
+
+if ( $options{version} ) {
+    print STDOUT "$0 version $version.\nBuilt on $date.\n";
+    exit(0);
+}
 
 #Die if GetOptions returns false [unknown option passed]
 if ( !$signal ) {
@@ -314,16 +326,32 @@ if ( !defined $options{align_prog} ) {
 }
 
 logger("Assuming blast executables in PATH\n") if $localblastdir eq '';
-if ( $options{gblocks} ) {
-    if ( ! $options{gblocks_params} ) {
-        $options{gblocks_params} .= ' -s=y -p=y';
-    }
-    logger("Assuming Gblocks is in PATH\n") if $gblockspath eq 'Gblocks';
-    `which $gblockspath`;
-    if ( $? != 0 ) {
-        logger(
-            "There was a problem finding Gblocks.  Check your PATH to ensure Gblocks is present or provide the complete path to blast in the script."
-        );
+if ( $options{trimmer} ) {
+    if ( $options{trimmer} =~ /[nN]oisy|[gG]blocks/ ) {
+        if ( $options{trimmer} =~ /[gG]blocks/ ) {
+            $options{trimmer} = 'Gblocks';
+            if ( ! $options{trimmer_params} ) {
+                $options{trimmer_params} = '-s=y -p=y';
+            }
+            logger("Assuming Gblocks is in PATH\n") if $gblockspath eq 'Gblocks';
+            `which $gblockspath`;
+            if ( $? != 0 ) {
+                logger(
+                    "There was a problem finding Gblocks.  Check your PATH to ensure Gblocks is present or provide the complete path to blast in the script."
+                );
+                die("\n");
+            }
+        } elsif ( $options{trimmer} =~ /[nN]oisy/ ) {
+            $options{trimmer} = 'noisy';
+            if ( $options{prog} =~ /^blastn$/ ) {
+                $options{trimmer_params} = '--seqtype N';
+            } elsif ( $options{prog} =~ /^tblastn$/ ) {
+                $options{trimmer_params} = '--seqtype P';
+            }
+
+        }
+    } else {
+        logger("Options for --trimmer are noisy or gblocks. Check your settings and try again.\n");
         die("\n");
     }
 }
@@ -473,7 +501,7 @@ if ( $options{local_db} ) {
 }
 foreach my $key ( sort keys %options ) {
     my @skip =
-      qw(config log runid help man db dbfrom cleanup local_db clear_dbs clear_input debug_cleanup halt);
+      qw(config log runid help man db dbfrom cleanup local_db clear_dbs clear_input debug_cleanup checkpoint version);
     next if ( grep { $_ eq $key } @skip );
     if ( defined( $options{$key} ) ) {
         if ( $key =~ /email/ ) {
@@ -518,6 +546,7 @@ foreach my $infile (@inputs) {
             $evalue       = $options{wgs_evalue};
             $target       = $options{wgs_target};
             $entrez_query = $options{wgs_entrez_query};
+            $threads = $options{threads};
         } elsif ( $j == 2 ) {
 
             #            $db = $options{local_db};
@@ -586,7 +615,7 @@ foreach my $infile (@inputs) {
                 if ( $j == 0 || $j == 1 ) {
                     logger("Entrez query      => $entrez_query\n");
                 }
-                if ( $j == 2 ) {
+                if ( $j == 1 || $j == 2 ) {
                     logger("# of threads      => $threads\n");
                 }
                 my $query = "$runpath/tmp";
@@ -615,8 +644,13 @@ foreach my $infile (@inputs) {
                 if ( $j == 0 || $j == 1 ) {
                     $command .= " "
                       . join( " ",
-                              "-entrez_query", "\'$entrez_query\'", "-remote" );
-                } elsif ( $j == 2 ) {
+                              "-entrez_query", "\'$entrez_query\'" );
+
+                } 
+                if ( $j == 0 ) {
+                    $command .= " -remote";
+                }
+                if ( $j == 1 || $j == 2 ) {
                     $command .= " " . join( " ", "-num_threads", "$threads" );
                 }
 
@@ -778,7 +812,7 @@ logger("---------------------------------------------------\n");
 logger("---------------------------------------------------\n\n");
 
 logger(
-    "Compiling and aligning fasta files started at $time; also trimming with gblocks if desired\n"
+    "Compiling and aligning fasta files started at $time; also trimming if desired\n"
 );
 
 if ( $options{cleanup} ) {
@@ -794,6 +828,7 @@ foreach my $gene ( keys %files ) {
         $skip_gfilter++;
     }
 }
+
 
 #concat & align files, one for each gene as input
 if ( $skip_gfilter > 0 ) {
@@ -814,10 +849,10 @@ if ( $skip_gfilter > 0 ) {
         push( @{ $files{$gene}{'cat'} }, "$runpath/$gene.all.fas" );
     }
 
-    if ( $options{halt} ) {
+    if ( defined $options{checkpoint} && $options{checkpoint} eq 'fasta'  ) {
         logger(
-             "Halting before FASTA file compiliation. Option -halt invoked.\n");
-        exit(-1);
+             "Halting before FASTA file compilation. Option -checkpoint fasta invoked.\n");
+        exit();
     }
 
     logger("Finding genomes with copies of all genes\n");
@@ -883,26 +918,49 @@ logger("---------------------------------------------------\n\n");
 
 #Perform Gblocks trim if desired
 
-if ( $options{gblocks} ) {
-    logger("Trimming alignments with Gblocks...\n");
+if ( $options{trimmer} ) {
+    logger("Trimming alignments with $options{trimmer}...\n");
     foreach my $gene ( keys %files ) {
         foreach my $file ( @{ $files{$gene}{'aln'} } ) {
-            if ( !-s "${file}-gb" ) {
-                `rm -f ${file}-gb` if -e "${file}-gb";
-                my $command = "$gblockspath $file $options{gblocks_params}";
-                system("$command") == 256
-                  or die "Unable to run Gblocks command properly : $command\n";
-            } else {
-                logger("Gblocks file ${file}-gb already found. Skipping...\n");
-            }
+            if ( $options{trimmer} eq 'Gblocks' ) {
+                if ( !-s "${file}-gb" ) {
+                    `rm -f ${file}-gb` if -e "${file}-gb";
+                    my $command = "$gblockspath $file $options{trimmer_params}";
+                    logger("Running command : $command\n");
+                    system("$command") == 256
+                      or die "Unable to run Gblocks command properly : $command\n";
+                } else {
+                    logger("Gblocks file ${file}-gb already found. Skipping...\n");
+                }
 
-            filecheck( "Gblocks file", "${file}-gb" );
-            push( @{ $files{$gene}{'gb'} }, "${file}-gb" );
+                filecheck( "Gblocks file", "${file}-gb" );
+                push( @{ $files{$gene}{'trimmed'} }, "${file}-gb" );
+            } elsif ( $options{trimmer} eq 'noisy' ) {
+                my $trimmed = $file;
+                $trimmed =~ s/\.aln/_out.fas/;
+                if ( !-s "$trimmed" ) {
+                    `rm -f $trimmed` if -e "$trimmed";
+                    chdir("$runpath");
+                    my $command = "$noisypath $options{trimmer_params} $file";
+                    logger("Running command : $command\n");
+                    my @output = `$command`; 
+                    logger(@output);
+                    if ( $? != 0 ) { 
+                        logger("Unable to run noisy command properly : $command\n");
+                        exit(-1);
+                    }
+                } else {
+                    logger("noisy file $trimmed already found. Skipping...\n");
+                }
+
+                filecheck( "noisy file", $trimmed );
+                push( @{ $files{$gene}{'trimmed'} }, $trimmed );
+            }
 
         }
     }
     $time = localtime();
-    logger("Finished trimming with Gblocks at $time\n\n");
+    logger("Finished trimming with $options{trimmer} at $time\n\n");
 }
 logger("---------------------------------------------------\n");
 logger("---------------------------------------------------\n\n");
@@ -943,8 +1001,8 @@ if ( -s "$runpath/$runid.concat" ) {
 
     my @concat_files;
     foreach my $gene ( keys %files ) {
-        if ( exists( $files{$gene}{'gb'} ) ) {
-            foreach my $file ( @{ $files{$gene}{'gb'} } ) {
+        if ( exists( $files{$gene}{'trimmed'} ) ) {
+            foreach my $file ( @{ $files{$gene}{'trimmed'} } ) {
                 push( @concat_files, $file );
             }
         } else {
@@ -1026,6 +1084,11 @@ if ( defined( $options{rereplicate} ) ) {
 }
 
 #Begin with protein model selection.
+
+if ( defined $options{checkpoint} && $options{checkpoint} eq 'model' ) {
+    logger("Halting before model selection. Option --checkpoint model invoked.\n");
+    exit();
+}
 
 my $proteinin;
 
@@ -1208,6 +1271,7 @@ sub filecheck {
 sub cleanup {
     `rm -f $runpath/*all.fas*`;
     `rm -f $runpath/*all.aln*`;
+    `rm -f $runpath/*all_*`;
     `rm -f $runpath/*concat*`;
     `rm -f $runpath/*partition*`;
     if ( -d "$runpath/model_test" ) {
@@ -1289,7 +1353,7 @@ Option searches for complete records only.  Adds "AND complete genome" to search
 
 Searches the nr/nt database.
 
-=item B<-wgs> [off]
+=item B<-wgs> [off] NO LONGER SUPPORTED BY NCBI - doesn't work anymore
 
 Includes a separate search for wgs-deposited sequences.
 
@@ -1309,13 +1373,13 @@ The linsi algorithm of mafft is listed by default.  Any alignment program that p
 
 Supply a string in quotes that will be added to the end of the alignment program for program specific commands. (e.g. '--legacygappenalty' for mafft)
 
-=item B<-gblocks>
+=item B<-trimmer> (gblocks OR noisy)
 
-Run Gblocks to trim out gappy parts of the alignment.
+Run Gblocks or noisy to trim out gappy parts of the alignment.
 
-=item B<-gblocks_params>
+=item B<-trimmer_params>
 
-Can flag for gblocks to run with additional parameters using -gblocks_params='-b3=10 -b4=5 -b5=h' syntax at the commandline.
+Can flag for trimmer to run with additional parameters using -trimmer_params='-b3=10 -b4=5 -b5=h' syntax at the commandline. noisy will automatically set seqtype parameter.
 
 =item B<-rereplicate> (filename)
 
@@ -1335,7 +1399,7 @@ Except for evalue, by default the wgs and local values are set to equal the 'nor
 
 Sets the e-value cutoffs.
 
-=item B<-target>, B<-wgs_target> and B<-local_target> [250]
+=item B<-target>, B<-wgs_target> and B<-local_target> [500]
 
 Sets the limit on number of alignments returned. 
 
@@ -1357,9 +1421,9 @@ B<ADVANCED>
 
 Removes all files generated after BLAST search output.  Allows for restarting of jobs that may have failed and cannot continue due to unusual circumstances.
 
-=item B<-halt>
+=item B<-checkpoint> (fasta OR model)
 
-Stops script prior to filtering for genes found in all genomes.  Useful for acquiring gene sequences without requiring completion of the entire pipeline.
+Stops script prior to filtering for genes found in all genomes or prior to alignment.  Useful for acquiring gene sequences without requiring completion of the entire pipeline, or doing the BLAST searches using a slower machine, saving the alignments for a more powerful machine. 
 
 =item B<-concat>
 

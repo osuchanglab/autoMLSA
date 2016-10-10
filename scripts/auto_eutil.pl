@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 use strict;
 use warnings;
 use Bio::DB::EUtilities;
@@ -516,6 +516,10 @@ foreach my $gi_chunk (@gis) {
         my $result = pop(@results);
 
         my $acc    = $accn{$submit};
+        if ( ! $acc ) {
+            logger("Unable to find accession number for ID $submit. Skipping...\n");
+            next;
+        }
         my $master = getMaster($acc);
 
         $assem{$master} = $result;
