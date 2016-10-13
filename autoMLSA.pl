@@ -115,7 +115,7 @@ my %options = (
 
 my $signal = GetOptions(
                          \%options,            'help|h',
-                         'man',                'runid=s',
+                         'man',                'runid|r=s',
                          'email=s',            'config=s',
                          'quiet!',             'prog=s',
                          'evalue=f',           'target=i',
@@ -397,7 +397,7 @@ $blast_check = (
                );
 my @blast_version = `$blast_check -version`;
 
-if ( grep( /2.2.31|2.3.[\d]+/, @blast_version ) ) {
+if ( grep( /2.2.31|2.[1-9]?[3-9].[\d]+/, @blast_version ) ) {
     logger("Found BLAST version 2.2.31 or greater\n");
 } else {
     logger(
