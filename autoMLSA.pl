@@ -401,7 +401,7 @@ if ( grep( /2.2.31|2.[1-9]?[3-9].[\d]+/, @blast_version ) ) {
     logger("Found BLAST version 2.2.31 or greater\n");
 } else {
     logger(
-        "BLAST version 2.2.31 is REQUIRED!  Make sure the full path is provided or include it in your PATH!\n"
+        "BLAST version 2.2.31 or greater is REQUIRED!  Make sure the full path is provided or include it in your PATH!\n"
     );
     die("\n");
 }
@@ -751,23 +751,25 @@ foreach my $sequence ( sort keys %files ) {
         my $keyfile    = $fasout;
         my $accnfile   = $fasout . ".accn.tmp";
         #my $manualfile = $keyfile . ".manual";
-        if ( !-s $accnfile ) {
-            next;
-        }
-        $keyfile =~ s/.fas$/.key/;
-        push( @{ $files{$sequence}{'key'} }, $keyfile );
-        if ( -s $keyfile ) {
-            logger("Keyfile $keyfile already found. Skipping...\n");
-            next;
-        } elsif ( -e $keyfile ) {
-            `rm -f $keyfile`;
-        }
-        my $command =
-          join( " ",
-                $elinkpath,  $accnfile, "-log", $logfile,
-                "--email", $email, ">>",     $keyfile );
+        if ( -s $accnfile ) {
+            $keyfile =~ s/.fas$/.key/;
+            push( @{ $files{$sequence}{'key'} }, $keyfile );
+            my $command =
+              join( " ",
+                    $elinkpath,  $accnfile, "-log", $logfile,
+                    "--email", $email, ">>",     $keyfile );
 
-        system($command) == 0 or die "Unable to generate keyfile!";
+            system($command) == 0 or die "Unable to generate keyfile!";
+
+            `mv $accnfile $accnfile.dled`;
+        } else {
+            if ( -e $keyfile ) {
+                push( @{ $files{$sequence}{'key'} }, $keyfile );
+            } else {
+                logger("Unable to find keyfile for $fasout. Re-do BLAST searches and try again.\n");
+                exit(-1);
+            }
+        }
 
         filecheck( "keyfile", $keyfile );
     }
@@ -944,7 +946,7 @@ if ( $options{trimmer} ) {
                     my $command = "$noisypath $options{trimmer_params} $file";
                     logger("Running command : $command\n");
                     my @output = `$command`; 
-                    logger(@output);
+                    #logger(join("\n",@output));
                     if ( $? != 0 ) { 
                         logger("Unable to run noisy command properly : $command\n");
                         exit(-1);

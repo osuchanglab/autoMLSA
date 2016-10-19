@@ -79,8 +79,8 @@ Required
 * BLAST+ version 2.2.31+
 * Perl version 5.10.1 or higher
 * Perl Modules
-  * BioPerl (Bio::Perl) v1.7.005 [(1.007000\_005)](http://search.cpan.org/~cjfields/BioPerl-1.007000_005/)
-  * BioPerl Eutilities (Bio::DB::EUtilities) v1.73 manual update from [github](https://github.com/bioperl/Bio-EUtilities)
+  * BioPerl (Bio::Perl) v1.7.000 [(1.007000)](http://search.cpan.org/~cjfields/BioPerl-1.007000/)
+  * BioPerl Eutilities (Bio::DB::EUtilities) v1.75 or higher
 
 Multiple Sequence Alignment software
 * [MAFFT v7](http://mafft.cbrc.jp/alignment/software/) **recommended**
