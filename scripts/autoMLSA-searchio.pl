@@ -160,9 +160,9 @@ while ( <$fh> ) {
     }
     my ($accn,$matched) = get_accn($sacc);
 
-    if ($accn =~ /\.[0-9]+/) {
-        $accn =~ s/\.[0-9]+//;
-    }
+#    if ($accn =~ /\.[0-9]+/) {
+#        $accn =~ s/\.[0-9]+//;
+#    }
 
     if ( $sseq =~ $badbase ) {
         logger("Bad residue (J, O, or U) found in $accn. Check BLAST output file ($infile) for more information.\n");
