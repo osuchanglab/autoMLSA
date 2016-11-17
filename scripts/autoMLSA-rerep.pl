@@ -30,10 +30,17 @@ use warnings;
 use strict;
 use Bio::SeqIO;
 use Getopt::Long;
+use Pod::Usage;
 
 my $keyfile;
+my $help = 0;
 
-my $signal = GetOptions('key=s' => \$keyfile);
+my $signal = GetOptions('key=s' => \$keyfile,
+                        'h|help' => \$help);
+
+if ($help) {
+   pod2usage(-verbose => 1); 
+}   
 
 die "No infile specified.  Run with option -h for more information.\n" if scalar(@ARGV) == 0;
 
@@ -68,3 +75,16 @@ while ( my $seq = $in->next_seq() ) {
     }
 }
 close OUTFILE;
+
+__END__
+
+=head1 NAME
+
+autoMLSA-rerep.pl - Rereplicate a dereplicated file so that essential strains are included in the final analysis.
+
+=head1 SYNOPSIS
+
+autoMLSA-rerep.pl -key rerep.txt alignment.derep
+
+Generate rerep.txt from alignment.derep.log by grepping the essential lines
+
