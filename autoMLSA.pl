@@ -42,6 +42,9 @@ use Cwd 'abs_path';
 my $version = '1.0.1';
 my $date = 'October 10, 2016';
 my $email = '';    #Can set to default
+if (defined $ENV{'EMAIL'}) {
+    $email ||= $ENV{'EMAIL'};
+}
 
 #Setting up paths properly
 
