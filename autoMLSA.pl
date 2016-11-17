@@ -348,6 +348,7 @@ if ( $options{trimmer} ) {
             } elsif ( $options{prog} =~ /^tblastn$/ ) {
                 $options{trimmer_params} = '--seqtype P';
             }
+            $options{trimmer_params} .= ' -s';
 
         }
     } else {
@@ -945,7 +946,8 @@ if ( $options{trimmer} ) {
                     chdir("$runpath");
                     my $command = "$noisypath $options{trimmer_params} $file";
                     logger("Running command : $command\n");
-                    my @output = `$command`; 
+                    system($command);
+                    #my @output = `$command`; 
                     #logger(join("\n",@output));
                     if ( $? != 0 ) { 
                         logger("Unable to run noisy command properly : $command\n");
@@ -1273,7 +1275,7 @@ sub filecheck {
 sub cleanup {
     `rm -f $runpath/*all.fas*`;
     `rm -f $runpath/*all.aln*`;
-    `rm -f $runpath/*all_*`;
+#    `rm -f $runpath/*all_*`;
     `rm -f $runpath/*concat*`;
     `rm -f $runpath/*partition*`;
     if ( -d "$runpath/model_test" ) {
