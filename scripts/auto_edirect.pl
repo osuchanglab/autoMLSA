@@ -111,6 +111,7 @@ logger( scalar(@gis) . " GIs returned from efetch.\n" );
 
 if (scalar(@gis) == scalar(@idmatch)){
     #print STDERR "Returned equal number of GIs as submitted accessions!\n";
+    logger("Matching Accessions to GI numbers.\n");
     foreach my $line (@gis) {
         my ($acc, $gi) = split("\t",$line);
         $accn{$gi} = $acc;
@@ -123,12 +124,16 @@ if (scalar(@gis) == scalar(@idmatch)){
 }
 
 #This section will remain mostly unchanged
+
+logger("Getting genbank metadata for organism name, country, year, etc.\n");
 my @command = ( "cat history |",
                 "$efetch -format gbc -mode xml -seq_start 1 -seq_stop 2 |",
                 "$xtract -insd source organism strain isolation_source db_xref country culture_collection collection_date");
 
 $command = join(" ", @command);
 my @output = `$command`;
+
+logger("Parsing genbank metadata.\n");
 
 foreach my $item (@output) {
     chomp($item);
@@ -167,6 +172,7 @@ foreach my $item (@output) {
     $year{$gi} = $date;
 }
 
+logger("Getting links to assembly DB.\n");
 #This section will use accession instead of GI numbers
 @command = ("cat history |",
             "$elink -target assembly -cmd neighbor |",
@@ -175,11 +181,15 @@ $command = join(" ", @command);
 
 @output = `$command`;
 
+logger("Parsing links to assembly DB.\n");
+
 foreach my $item (@output) {
     chomp($item);
     my ($gi, $assemid) = split("\t",$item);
     $assem{$gi} = $assemid;
 }
+
+logger("Mapping and printing all data.\n");
 
 #Map accessions to taxonomy names
 foreach my $id (@ids) {
