@@ -33,8 +33,6 @@ use warnings;
 use Getopt::Long;
 use Pod::Usage;
 use Bio::SeqIO;
-use Bio::SearchIO;
-use Bio::DB::EUtilities;
 
 use File::Spec;
 use Cwd 'abs_path';
@@ -64,7 +62,7 @@ my $scriptdir   = ''
 my $proteinmodelpath =
   ( $scriptdir ? $scriptdir : $sdir ) . 'ProteinModelSelection.pl';
 my $searchiopath = ( $scriptdir ? $scriptdir : $sdir ) . 'autoMLSA-searchio.pl';
-my $elinkpath    = ( $scriptdir ? $scriptdir : $sdir ) . 'auto_eutil.pl';
+my $elinkpath    = ( $scriptdir ? $scriptdir : $sdir ) . 'auto_edirect.pl';
 my $dereplicatepath = ( $scriptdir ? $scriptdir : $sdir ) . 'autoMLSA-derep.pl';
 my $rereplicatepath = ( $scriptdir ? $scriptdir : $sdir ) . 'autoMLSA-rerep.pl';
 my $mlsaconcatpath = ( $scriptdir ? $scriptdir : $sdir ) . 'autoMLSA-concat.pl';
@@ -749,33 +747,45 @@ logger("---------------------------------------------------\n");
 logger("---------------------------------------------------\n\n");
 
 logger("Finding taxonomic and naming information.\n");
-
+my %keys;
+if ( -s "$runpath/all.keys" ) {
+    open( my $keyfh, '<', "$runpath/all.keys" ) or die "Unable to open all.keys : $!\n";
+    while(<$keyfh>){
+        my $line = $_;
+        my @data = split("\t",$line);
+        $keys{$data[0]} = 1;
+    }
+}
+my @searchfiles;
 foreach my $sequence ( sort keys %files ) {
     foreach my $fasout ( @{ $files{$sequence}{'fas'} } ) {
-        my $keyfile    = $fasout;
         my $accnfile   = $fasout . ".accn.tmp";
-        #my $manualfile = $keyfile . ".manual";
         if ( -s $accnfile ) {
-            $keyfile =~ s/.fas$/.key/;
-            push( @{ $files{$sequence}{'key'} }, $keyfile );
-            my $command =
-              join( " ",
-                    $elinkpath,  $accnfile, "-log", $logfile,
-                    "--email", $email, ">>",     $keyfile );
-
-            system($command) == 0 or die "Unable to generate keyfile!";
-
+            push(@searchfiles,$accnfile);
             `mv $accnfile $accnfile.dled`;
-        } else {
-            if ( -e $keyfile ) {
-                push( @{ $files{$sequence}{'key'} }, $keyfile );
-            } else {
-                logger("Unable to find keyfile for $fasout. Re-do BLAST searches and try again.\n");
-                exit(-1);
-            }
         }
-
-        filecheck( "keyfile", $keyfile );
+    }
+}
+if (@searchfiles) {
+    my %searchids;
+    my $files = join(" ",@searchfiles);
+    my @tmpdata = `cat $files | sort | uniq`;
+    foreach my $tmpid (@tmpdata) {
+        if ( ! defined( $keys{$tmpid} ) ) {
+            $searchids{$tmpid} = 1;
+        }
+    }
+    if ( keys %searchids > 0 ) {
+        open( my $searchfh, '>', "$runpath/all.accn" ) or die "Unable to open all.accn : $!\n";
+        foreach my $accn (sort keys %searchids) {
+            print $searchfh $accn."\n";
+        }
+        close $searchfh;
+        if ( ! -e "$runpath/all.keys" ) {
+            system("touch $runpath/all.keys");
+        }
+        my $command = join( " ", $elinkpath, "$runpath/all.accn", '-log', $logfile, '--email', $email, '>>', "$runpath/all.keys" );
+        system($command) == 0 or die "Unable to generate keyfile!";
     }
 }
 
@@ -795,27 +805,10 @@ if ( $file_debug == 0 ) {
         foreach my $value ( @{ $files{$key}{'out'} } ) {
             print "out => $value\n";
         }
-        foreach my $value ( @{ $files{$key}{'key'} } ) {
-            print "key => $value\n";
-        }
     }
 }
 
 $time = localtime();
-
-logger("Compiling key files...\n");
-
-`rm -f $runpath/all.keys` if -e "$runpath/all.keys";
-`cat $runpath/*.key | sort | uniq > $runpath/all.keys`;
-if ( $? != 0 ) {
-    die("There was a problem concatenating key files. Check your permissions and try again."
-       );
-}
-filecheck( "key files", "$runpath/all.keys" );
-$time = localtime();
-logger("Key files compiled.  Finished at $time\n\n");
-logger("---------------------------------------------------\n");
-logger("---------------------------------------------------\n\n");
 
 logger(
     "Compiling and aligning fasta files started at $time; also trimming if desired\n"
@@ -973,28 +966,6 @@ logger("---------------------------------------------------\n");
 logger("---------------------------------------------------\n\n");
 
 #Finding genes shared by all and concatenating
-
-my $manual_check = 0;
-
-foreach my $gene ( sort keys %files ) {
-    foreach my $fasfile ( @{ $files{$gene}{'fas'} } ) {
-        if ( -e "$fasfile.manual" ) {
-            $manual_check++;
-        }
-    }
-}
-
-if ( $manual_check == 0 ) {
-    $options{concat} = 1;
-}
-
-if ( !$options{concat} ) {
-    logger(
-        "Quitting prior to concatenation. Check the .manual files for any species names that need to be fixed prior to continuing.\n"
-    );
-    logger("To resume/continue the run, use the flag -concat\n");
-    die("\n");
-}
 
 if ( -s "$runpath/$runid.concat" ) {
     logger(
@@ -1431,10 +1402,6 @@ Removes all files generated after BLAST search output.  Allows for restarting of
 =item B<-checkpoint> (fasta OR model)
 
 Stops script prior to filtering for genes found in all genomes or prior to alignment.  Useful for acquiring gene sequences without requiring completion of the entire pipeline, or doing the BLAST searches using a slower machine, saving the alignments for a more powerful machine. 
-
-=item B<-concat>
-
-Flag required to continue when .manual files are present.  Fix the genome names in the manual files and supply -concat to continue. 
 
 =back
 
