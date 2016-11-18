@@ -103,7 +103,7 @@ logger("Successfully posted $counter{'epost'} accessions.\n");
 
 #This section will become extraneous once accession.versions are acceptable.
 
-@gis = `cat history | $efetch -format gi`;
+@gis = `cat history | $efetch -format docsum | xtract -pattern DocumentSummary -element AccessionVersion Gi`;
 
 chomp(@gis);
 
@@ -111,9 +111,10 @@ logger( scalar(@gis) . " GIs returned from efetch.\n" );
 
 if (scalar(@gis) == scalar(@idmatch)){
     #print STDERR "Returned equal number of GIs as submitted accessions!\n";
-    for (my $i = 0; $i < scalar(@gis); $i++) {
-        $accn{$gis[$i]} = $idmatch[$i];
-        $gis{$idmatch[$i]} = $gis[$i];
+    foreach my $line (@gis) {
+        my ($acc, $gi) = split("\t",$line);
+        $accn{$gi} = $acc;
+        $gis{$acc} = $gi;
     }
 } else {
     logger("GIs and accessions do not match!\n");
