@@ -757,15 +757,23 @@ if ( -s "$runpath/all.keys" ) {
     }
 }
 my @searchfiles;
+my @keyfiles;
 foreach my $sequence ( sort keys %files ) {
     foreach my $fasout ( @{ $files{$sequence}{'fas'} } ) {
+        my $keyfile = $fasout;
+        $keyfile =~ s/\.fas/.key/;
+        if ( -s $keyfile ) {
+            push(@keyfiles,$keyfile);
+        }
         my $accnfile   = $fasout . ".accn.tmp";
         if ( -s $accnfile ) {
-            push(@searchfiles,$accnfile);
+            push(@searchfiles,"$accnfile.dled");
             `mv $accnfile $accnfile.dled`;
         }
     }
 }
+chomp(@keyfiles);
+my $kcompile = join(' ', @keyfiles);
 if (@searchfiles) {
     my %searchids;
     my $files = join(" ",@searchfiles);
@@ -778,16 +786,20 @@ if (@searchfiles) {
     if ( keys %searchids > 0 ) {
         open( my $searchfh, '>', "$runpath/all.accn" ) or die "Unable to open all.accn : $!\n";
         foreach my $accn (sort keys %searchids) {
-            print $searchfh $accn."\n";
+            print $searchfh $accn;
         }
         close $searchfh;
-        if ( ! -e "$runpath/all.keys" ) {
-            system("touch $runpath/all.keys");
+        if ( ! -e "$runpath/keys.tmp" ) {
+            system("touch $runpath/keys.tmp");
         }
-        my $command = join( " ", $elinkpath, "$runpath/all.accn", '-log', $logfile, '--email', $email, '>>', "$runpath/all.keys" );
+        my $command = join( " ", $elinkpath, "$runpath/all.accn", '-log', $logfile, '--email', $email, '>>', "$runpath/keys.tmp" );
         system($command) == 0 or die "Unable to generate keyfile!";
     }
 }
+if ( -e "$runpath/all.keys" ) {
+    `rm -f $runpath/all.keys`;
+}
+system("cat $kcompile $runpath/keys.tmp > $runpath/all.keys") == 0 or die "Unable to compile key data : $!";
 
 $time = localtime();
 

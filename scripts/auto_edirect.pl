@@ -29,12 +29,18 @@ if ( defined($logging) ) {
 checkEmail($email);
 
 my $infile = shift;
+my @ids;
 
 open INFILE, "$infile"
   or die "$infile is unavailable. Check your path and try again!\n";
-my @ids = <INFILE>;
+while(<INFILE>) {
+    my $line = $_;
+    chomp($line);
+    if ($line) {
+        push(@ids,$line);
+    }
+}
 close INFILE;
-chomp(@ids);
 
 my %idmatch;    # master record accession for WGS; accession for nt
 my @idmatch;    # master record list for submit to NCBI
@@ -86,15 +92,14 @@ system("$command") == 0 or die "Unable to run epost command : $!";
 
 if ( $? != 0 ) {
     logger("Problem posting accession numbers to NCBI. See output message below and check your connection and try again.\n");
-    logger($history."\n");
     exit(4);
 }
 
-my $history = `cat history`;
+$history = `cat history`;
 
-my $count{'epost'} = getCount($history);
+$counter{'epost'} = getCount($history);
 
-logger("Successfully posted $count{'epost'} accessions.\n");
+logger("Successfully posted $counter{'epost'} accessions.\n");
 
 #This section will become extraneous once accession.versions are acceptable.
 
@@ -199,6 +204,7 @@ foreach my $id (@ids) {
 }
 
 logger("Done.\n");
+`rm -f history`;
 
 sub getMaster {
     my $id = shift;
