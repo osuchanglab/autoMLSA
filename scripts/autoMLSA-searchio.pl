@@ -188,7 +188,9 @@ while ( <$fh> ) {
                 print $temp $accn . "\n";
             }
         } else {
-            print $keyfileout join("\t",$accn,'NULL','NULL',$stitle, $stitle,'NULL',$accn,'NULL','NULL','NULL','NULL','NULL')."\n";
+#Current format is Accession,AssemblyID,TaxID,SciName,GI,Master,GenBankName,Country,Source,Strain,CultureCollection,Year
+#                  $match        0        1      2    3    4         5         6       7      8          9           10
+            print $keyfileout join("\t",$accn,'NULL','NULL',$stitle, 'NULL',$accn,'NULL','NULL','NULL','NULL','NULL', 'NULL')."\n";
         }
     } else {
         $below{$accn} = 1;
