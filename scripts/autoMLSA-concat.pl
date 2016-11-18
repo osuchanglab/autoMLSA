@@ -4,7 +4,7 @@
 # COPYRIGHT NOTICE
 #
 # autoMLSA-concat.pl - A script to concatenate a series of genes used
-# for a Multi-Locus Sequence Alignment.  Uses a keyfile to translate 
+# for a Multi-Locus Sequence Alignment.  Uses a keyfile to translate
 # the accession numbers to strain names and also generates a partition
 # file to split the alignment apart later.
 #
@@ -78,71 +78,44 @@ if ( defined($logging) ) {
     }
 }
 
-open KEYFILE, "$keyfile" or die "$keyfile unavailable : $!";
+open $keyfh, "$keyfile" or die "$keyfile unavailable : $!";
 
 #Load hash with keyfile data
-#Current format is Accession,AssemblyID,TaxID,SciName,GuessName,GI,Master,GenBankName,Host,Country,Source,Strain,CultureCollection
-while (<KEYFILE>) {
+#Current format is Accession,AssemblyID,TaxID,SciName,GI,Master,GenBankName,Country,Source,Strain,CultureCollection,Year
+#                  $match        0        1      2    3    4         5         6       7      8          9           10
+while (<$keyfh>) {
     my $line = $_;
     chomp($line);
     my ( $accn, @values ) = split( "\t", $line );
     my $match = $values[0];
     if ( $match eq 'NULL' ) {
-        $match = $values[5];
+        $match = $values[4];
     }
     $idmatch{$accn} = $match;
 
     if ( !exists( $headers{$match} ) ) {
-    
+
         #Choose appropriate header name
         my $sciname = $values[2];
-        my $guess   = $values[3];
-        my $gbname = '';
-        my $strain = '';
-        my $culture = '';
-        if ($values[6]) {
-            $gbname = $values[6];
-        }
-        if ($values[10]) {
-            $strain = $values[10]; 
-        }
-        if ($values[11]) {
-            $culture = $values[11];
-        }
-        my $header = $sciname;
-        my @test = split( " ", $sciname );  #Test for quality of name from taxid
-        my $test = @test;
-        my @test2 = split( " ", $gbname );
-        my $test2 = @test2;
-        my $candidatus = 0;
-        my $subsp = 0;
-        if ($sciname =~ /candidatus/i ) {
-            $candidatus = 1;
-        }
-        if ($sciname =~ /pv\.|bv\.|subsp\./i ) {
-            $subsp = 2;
-        }
-        my $value = 2 + $candidatus + $subsp;
-        if ( $test == $value ) {
-            $header = $guess;
-            if ( $gbname ne 'NULL' ) {
-                if ($sciname ne $gbname) {
-                    $header = $gbname;
-                }
+        my $gbname  = $values[5];
+        my $header  = $sciname;
+        if ( $gbname ne 'NULL' ) {
+            if ( $sciname ne $gbname ) {
+                $header = $gbname;
             }
-        } 
+        }
 
         $headers{$match} = $header;
     }
 }
 
-close KEYFILE;
+close $keyfh;
 
 my @filenames;
 
 foreach my $infile (@infiles) {
 
-    my ($volume, $dir, $filename) = File::Spec->splitpath( $infile );
+    my ( $volume, $dir, $filename ) = File::Spec->splitpath($infile);
 
     $filename =~ s/\.[^\.]+//;
 
@@ -174,7 +147,7 @@ foreach my $key ( sort keys %{ $genes[0] } ) {
     $header =~ tr/ ()[]':/_{}{}__/;
     $header =~ s/,//;
     if ($strain) {
-        if ($header =~ /substr\._/) {
+        if ( $header =~ /substr\._/ ) {
             $header =~ s/substr\._//;
         }
         $header =~ s/strain_//;
@@ -182,7 +155,7 @@ foreach my $key ( sort keys %{ $genes[0] } ) {
     }
     if ( exists( $memory{$header} ) ) {
         $memory{$header}++;
-        $header .= "_".$memory{$header};
+        $header .= "_" . $memory{$header};
     } else {
         $memory{$header} = 0;
     }
@@ -217,18 +190,10 @@ for ( my $k = 0 ; $k < scalar(@infiles) ; $k++ ) {
         my @length = keys %{ $lengths[$k] };
         &log("$infiles[$k] gene length is $length[0].\n");
 
-    #	open GREP, "grep \'Best model according to BIC\' $infiles[$k].prottest |";
-    #	my $model = <GREP>;
-    #	chomp($model);
-    #	close GREP;
-    #	    &log $model."\n";
-    #	$model = $1 if $model =~ /\: ([^\s]+$)/;
-    #	    &log "\t".$model."\n";
-        my $model = 'LGF'
-          ;    #placeholder for now.  New system set up to get models from RAxML
-        print PARTITION $model . ", " 
-          . $filenames[$k]
-          . " = "
+        #placeholder for now.  New system set up to get models from RAxML
+        my $model = 'LGF';
+        print PARTITION $model . ", "
+          . $filenames[$k] . " = "
           . ( $total_length + 1 ) . "-"
           . ( $total_length + $length[0] ) . "\n";
         close PARTITION;
