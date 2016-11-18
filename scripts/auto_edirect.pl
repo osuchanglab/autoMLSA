@@ -90,6 +90,12 @@ if ( $? != 0 ) {
     exit(4);
 }
 
+my $history = `cat history`;
+
+my $count{'epost'} = getCount($history);
+
+logger("Successfully posted $count{'epost'} accessions.\n");
+
 #This section will become extraneous once accession.versions are acceptable.
 
 @gis = `cat history | $efetch -format gi`;
