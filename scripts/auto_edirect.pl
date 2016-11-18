@@ -3,16 +3,20 @@ use strict;
 use warnings;
 use Getopt::Long;
 
+my $edirpath = ''; #Set /path/to/edirect/ if edirect tools are not in your path
+my $elink = $edirpath . 'elink';
+my $epost = $edirpath . 'epost';
+my $efetch = $edirpath . 'efetch';
+my $xtract = $edirpath . 'xtract';
+
 my $email = '';
 my $logging;
 my $quiet = 0;
-my $manualfile;
 
 #Get options
 my $signal = GetOptions(
                          'log:s'    => \$logging,
                          'quiet'    => \$quiet,
-#                         'manual=s' => \$manualfile,
                          'email=s'  => \$email
                        );
 
@@ -39,8 +43,6 @@ my ( %assem, @assem );    # key = gi num, value = assembly id
 my ( %taxon, @taxon );    # key = gi num, value = taxon id
 my (%names);              # key = taxon id, value = scientific name
 my ( %gis, @gis );        # key = acc num, value = gi num
-my @cc = culture();       # Culture collections, used for guessing names later
-my %cc;                   #Map culture collections to keys in hash for checking
 my %titles;
 my %country;
 my %source;
@@ -51,9 +53,6 @@ my $history;
 my %counter;
 my %year;
 
-for (@cc) {
-    $cc{$_} = 1;
-}
 my %memory;     # Keep track of genome names to identify conflicts
 
 foreach my $id (@ids) {
@@ -74,16 +73,16 @@ my $j = 1;
 
 logger( "Submitting " . ( scalar(@idmatch) ) . " ids to epost.\n" );
 
-$counter{'assem'}    = 0;    # Number of assemblies retrieved
-$counter{'taxon'}    = 0;    # Number of names retrieved
-$counter{'organism'} = 0;    # Number of organism names retrieved
-$counter{'epost'} = 0;       # Number of accs posted
 
 my $join = join(',',@idmatch);
 
-$history = `epost -format acc -db nuccore -id $join`;
+if ( -e 'history' ) {
+    `rm -f history`;
+}
 
-$counter{'epost'} = getCount($history);
+my $command = join(" ", $epost, '-format', 'acc', '-db', 'nuccore', '-id', "$join", '>', 'history');
+
+system("$command") == 0 or die "Unable to run epost command : $!";
 
 if ( $? != 0 ) {
     logger("Problem posting accession numbers to NCBI. See output message below and check your connection and try again.\n");
@@ -91,14 +90,9 @@ if ( $? != 0 ) {
     exit(4);
 }
 
-logger( $counter{'epost'} . " Accessions posted using epost.\n" );
-
 #This section will become extraneous once accession.versions are acceptable.
-my @command = ('efetch -format gi');
 
-my $output = runExtCmd(\@command,\$history);
-
-@gis = @$output;
+@gis = `cat history | $efetch -format gi`;
 
 chomp(@gis);
 
@@ -117,12 +111,14 @@ if (scalar(@gis) == scalar(@idmatch)){
 }
 
 #This section will remain mostly unchanged
-@command = ('efetch -format gbc -mode xml -seq_start 1 -seq_stop 2 |',
-            'xtract -insd source organism strain isolation_source db_xref country culture_collection collection_date');
+my @command = ( "cat history |",
+                "$efetch -format gbc -mode xml -seq_start 1 -seq_stop 2 |",
+                "$xtract -insd source organism strain isolation_source db_xref country culture_collection collection_date");
 
-$output = runExtCmd(\@command,\$history);
+$command = join(" ", @command);
+my @output = `$command`;
 
-foreach my $item (@$output) {
+foreach my $item (@output) {
     chomp($item);
     my ($acc,$organism,$strain,$source,$xref,$country,$cc,$date) = split("\t",$item);
     my $gi = $gis{$acc};
@@ -160,12 +156,14 @@ foreach my $item (@$output) {
 }
 
 #This section will use accession instead of GI numbers
-@command = ('elink -target assembly -cmd neighbor |',
-            'xtract -pattern LinkSet -element IdList/Id Link/Id');
+@command = ("cat history |",
+            "$elink -target assembly -cmd neighbor |",
+            "$xtract -pattern LinkSet -element IdList/Id Link/Id");
+$command = join(" ", @command);
 
-$output = runExtCmd(\@command,\$history);
+@output = `$command`;
 
-foreach my $item (@$output) {
+foreach my $item (@output) {
     chomp($item);
     my ($gi, $assemid) = split("\t",$item);
     $assem{$gi} = $assemid;
@@ -309,25 +307,3 @@ sub getCount {
     return $ret;
 }
 
-sub runExtCmd {
-    my $cmd = shift;
-    my $his = shift;
-    my $output = shift; #Generally just for testing intermediate files
-    if (! $output) {
-        $output = 'tmp';
-    }
-    if ( -e "$output" ) {
-        `rm -f $output`;
-    }
-    my $submit = join(" ",@$cmd,"> $output");
-    open(my $pipe, "|-", "$submit") or die "Unable to submit command $submit : $!\n";
-    print $pipe $$his;
-    close($pipe);
-    open(my $tmp, "<", "$output") or die "Unable to open file $output : $!\n";
-    my @out = <$tmp>;
-    close($tmp);
-    if ($output eq 'tmp') {
-        `rm -f tmp`;
-    }
-    return \@out;
-}
