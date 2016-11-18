@@ -75,9 +75,7 @@ my %defaults = (
                  'prog'         => 'tblastn',
                  'nr'           => 1,
                  'complete'     => 1,
-                 'wgs'          => 0,
                  'evalue'       => '1e-5',
-                 'wgs_evalue'   => '1e-25',
                  'local_evalue' => '1e-5',
                  'target'       => 500,
                  'coverage'     => 50
@@ -120,19 +118,17 @@ my $signal = GetOptions(
                          'email=s',            'config=s',
                          'quiet!',             'prog=s',
                          'evalue=f',           'target=i',
-                         'coverage=f',         'wgs_evalue=f',
-                         'wgs_target=i',       'wgs_cov=f',
-                         'wgs_entrez_query=s', 'local_evalue=f',
+                         'coverage=f',         'local_evalue=f',
                          'local_target=i',     'local_cov=f',
                          'entrez_query=s',     'nr!',
-                         'complete!',          'wgs!',
+                         'complete!',          
                          'local_db=s@',        'threads=i',
                          'align_prog=s',       'align_params=s',
                          'trimmer=s',            'rereplicate:s',
                          'cleanup',            'log!',
                          'clear_input',        'clear_dbs',
                          'debug_cleanup',      'concat',
-                         'checkpoint=s',               'trimmer_params=s',
+                         'checkpoint=s',       'trimmer_params=s',
                          'version|v'
                        );
 
@@ -358,38 +354,21 @@ if ( $options{trimmer} ) {
     }
 }
 
-if ( $options{nr} == 0 && $options{wgs} == 0 && !defined( $options{local_db} ) )
+if ( $options{nr} == 0 && !defined( $options{local_db} ) )
 {
     logger(
-        "No BLAST searches scheduled to run. Please select at least one (-nr, -wgs, or supply a local BLAST db to -local_db.)"
+        "No BLAST searches scheduled to run. Please select at least one (-nr or supply a local BLAST db to -local_db.)"
     );
     die("\n");
 }
 
 #Set defaults
-$options{wgs}          //= $defaults{wgs};
 $options{evalue}       //= $defaults{evalue};
-$options{wgs_evalue}   //= $defaults{wgs_evalue};
 $options{local_evalue} //= $defaults{local_evalue};
 $options{target}       //= $defaults{target};
 $options{coverage}     //= $defaults{coverage};
-$options{wgs_target}   //= $options{target};
-$options{wgs_cov}      //= $options{coverage};
 $options{local_target} //= $options{target};
 $options{local_cov}    //= $options{coverage};
-
-if ( $options{wgs} == 1 ) {
-    $options{wgs_entrez_query} //= $options{entrez_query};
-    $options{wgs_entrez_query} =~ s/complete genome//;
-    if (   !$options{wgs_entrez_query}
-         || $options{wgs_entrez_query} !~ /ORGANISM|ORGN/ )
-    {
-        logger(
-            "Please provide a -wgs_entrez_query (or -entrez_query) with the ORGANISM flag (e.g. 'Escherichia[ORGANISM]') or the wgs search will fail."
-        );
-        die("\n");
-    }
-}
 
 #check for blast executable
 $blast_check = (
@@ -431,7 +410,7 @@ if (%options) {
     my $target   = 0;
     my $coverage = 0;
     my $death    = 0;
-    foreach my $value ( $options{evalue}, $options{wgs_evalue},
+    foreach my $value ( $options{evalue},
                         $options{local_evalue} )
     {
         if ( $value >= 10.1 ) {
@@ -439,7 +418,7 @@ if (%options) {
             $death++;
         }
     }
-    foreach my $value ( $options{target}, $options{wgs_target},
+    foreach my $value ( $options{target},
                         $options{local_target} )
     {
         if ( $value > 20000 || $value < 1 ) {
@@ -448,7 +427,7 @@ if (%options) {
         }
     }
     foreach
-      my $value ( $options{coverage}, $options{wgs_cov}, $options{local_cov} )
+      my $value ( $options{coverage}, $options{local_cov} )
     {
         if ( $value > 100 || $value < 25 ) {
             $coverage++;
@@ -523,15 +502,12 @@ $time = localtime();
 logger("Blast searches started at $time\n\n");
 
 foreach my $infile (@inputs) {
-    for ( my $j = 0 ; $j < 3 ; $j++ ) {
+    for ( my $j = 0 ; $j < 2 ; $j++ ) {
         if ( $options{nr} == 0 ) {
             $j = 1;    #Skip nr search if nr is not set
         }
-        if ( $j == 1 && $options{wgs} == 0 ) {
-            $j = 2;    #Skip wgs search if wgs is not set
-        }
-        if ( $j == 2 && !defined( $options{local_db} ) ) {
-            $j = 3;
+        if ( $j == 1 && !defined( $options{local_db} ) ) {
+            $j = 2;
             next;      #skip local blast if no local_db found
         }
 
@@ -544,13 +520,6 @@ foreach my $infile (@inputs) {
             $target       = $options{target};
             $entrez_query = $options{entrez_query};
         } elsif ( $j == 1 ) {
-            push( @dbs, 'wgs' );
-            $evalue       = $options{wgs_evalue};
-            $target       = $options{wgs_target};
-            $entrez_query = $options{wgs_entrez_query};
-            $threads = $options{threads};
-        } elsif ( $j == 2 ) {
-
             #            $db = $options{local_db};
             @dbs     = @{ $options{local_db} };
             $evalue  = $options{local_evalue};
@@ -589,8 +558,6 @@ foreach my $infile (@inputs) {
                 if ( $j == 0 ) {
                     $outfile .= '.out';
                 } elsif ( $j == 1 ) {
-                    $outfile .= '.wgs.out';
-                } elsif ( $j == 2 ) {
                     my ( $junk1, $junk2, $dbname ) = File::Spec->splitpath($db);
                     $outfile .= '_vs_' . $dbname . '.local.out';
                 }
@@ -614,10 +581,10 @@ foreach my $infile (@inputs) {
                 logger( "Blast program     => " . $options{prog} . "\n" );
                 logger( "e-value cutoff    => " . $evalue . "\n" );
                 logger( "# of alignments   => " . $target . "\n" );
-                if ( $j == 0 || $j == 1 ) {
+                if ( $j == 0 ) {
                     logger("Entrez query      => $entrez_query\n");
                 }
-                if ( $j == 1 || $j == 2 ) {
+                if ( $j == 1 ) {
                     logger("# of threads      => $threads\n");
                 }
                 my $query = "$runpath/tmp";
@@ -643,7 +610,7 @@ foreach my $infile (@inputs) {
                 if ( $blast_check !~ /tblastn/ ) {
                     $command .= " " . join( " ", "-task", "blastn" );
                 }
-                if ( $j == 0 || $j == 1 ) {
+                if ( $j == 0 ) {
                     $command .= " "
                       . join( " ",
                               "-entrez_query", "\'$entrez_query\'" );
@@ -652,7 +619,7 @@ foreach my $infile (@inputs) {
                 if ( $j == 0 ) {
                     $command .= " -remote";
                 }
-                if ( $j == 1 || $j == 2 ) {
+                if ( $j == 1 ) {
                     $command .= " " . join( " ", "-num_threads", "$threads" );
                 }
 
@@ -708,12 +675,9 @@ foreach my $sequence ( sort keys %files ) {
         $options{cleanup} = 1;
         my $cov = 0;
         my $db  = '';
-        if ( $blastout !~ /wgs|local/ ) {
+        if ( $blastout !~ /local/ ) {
             $cov = $options{coverage};
             $db  = 'nt';
-        } elsif ( $blastout =~ /wgs/ ) {
-            $cov = $options{wgs_cov};
-            $db  = 'wgs';
         } elsif ( $blastout =~ /local/ ) {
             $cov = $options{local_cov};
             $db  = $blastout;
@@ -927,7 +891,7 @@ logger("Finished all alignments using $options{align_prog} at $time\n\n");
 logger("---------------------------------------------------\n");
 logger("---------------------------------------------------\n\n");
 
-#Perform Gblocks trim if desired
+#Perform Gblocks/noisy trim if desired
 
 if ( $options{trimmer} ) {
     logger("Trimming alignments with $options{trimmer}...\n");
@@ -1343,10 +1307,6 @@ Option searches for complete records only.  Adds "AND complete genome" to search
 
 Searches the nr/nt database.
 
-=item B<-wgs> [off] NO LONGER SUPPORTED BY NCBI - doesn't work anymore
-
-Includes a separate search for wgs-deposited sequences.
-
 =item B<-local_db> (/path/to/blastdb1 /path/to/blastdb2)
 
 Allows a search of one or more local blastdbs in addition to the remote databases.
@@ -1381,25 +1341,25 @@ Cleans up files and allows for addition of more genes to the analysis. This will
 
 B<PARAMETERS>
 
-Except for evalue, by default the wgs and local values are set to equal the 'normal' parameters (e.g. -wgs_target and -local_target = -target).
+Except for evalue, by default the local values are set to equal the 'normal' parameters (e.g. -local_target = -target).
 
 =over
 
-=item B<-evalue> [1e-5], B<-wgs_evalue> [1e-50], and B<-local_evalue> [1e-5]
+=item B<-evalue> [1e-5] and B<-local_evalue> [1e-5]
 
 Sets the e-value cutoffs.
 
-=item B<-target>, B<-wgs_target> and B<-local_target> [500]
+=item B<-target> and B<-local_target> [500]
 
 Sets the limit on number of alignments returned. 
 
-=item B<-coverage>, B<-wgs_cov>, and B<-local_cov> [50]
+=item B<-coverage> and B<-local_cov> [50]
 
 Sets the threshold for coverage to include.  By default, includes all hits, regardless of coverage.  Values between 25 and 100 are valid [ex: 50 for alignment of 50% of the query and subject sequences]. 
 
-=item B<-entrez_query> and B<-wgs_entrez_query>
+=item B<-entrez_query>
 
-Sets an entrez query limiter to blast search.  Useful for searching only within a species, genus, etc. [ORGANISM] flag REQUIRED for wgs searches.
+Sets an entrez query limiter to blast search.  Useful for searching only within a species, genus, etc.
 
 Example: For looking only at Actinobacteria, use 'Actinobacteria[ORGANISM]'
 
