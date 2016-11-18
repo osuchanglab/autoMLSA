@@ -78,7 +78,7 @@ if ( defined($logging) ) {
     }
 }
 
-open $keyfh, "$keyfile" or die "$keyfile unavailable : $!";
+open my $keyfh, "$keyfile" or die "$keyfile unavailable : $!";
 
 #Load hash with keyfile data
 #Current format is Accession,AssemblyID,TaxID,SciName,GI,Master,GenBankName,Country,Source,Strain,CultureCollection,Year
@@ -99,12 +99,26 @@ while (<$keyfh>) {
         my $sciname = $values[2];
         my $gbname  = $values[5];
         my $header  = $sciname;
-        if ( $gbname ne 'NULL' ) {
-            if ( $sciname ne $gbname ) {
-                $header = $gbname;
+        my @test = split( " ", $sciname );  #Test for quality of name from taxid
+        my $test = @test;
+        my @test2 = split( " ", $gbname );
+        my $test2 = @test2;
+        my $candidatus = 0;
+        my $subsp = 0;
+        if ($sciname =~ /candidatus/i ) {
+            $candidatus = 1;
+        }
+        if ($sciname =~ /pv\.|bv\.|subsp\./i ) {
+            $subsp = 2;
+        }
+        my $value = 2 + $candidatus + $subsp;
+        if ( $test == $value ) {
+            if ( $gbname ne 'NULL' ) {
+                if ( $sciname ne $gbname ) {
+                    $header = $gbname;
+                }
             }
         }
-
         $headers{$match} = $header;
     }
 }

@@ -799,7 +799,7 @@ if (@searchfiles) {
 if ( -e "$runpath/all.keys" ) {
     `rm -f $runpath/all.keys`;
 }
-system("cat $kcompile $runpath/keys.tmp > $runpath/all.keys") == 0 or die "Unable to compile key data : $!";
+system("cat $kcompile $runpath/keys.tmp | sort | uniq > $runpath/all.keys") == 0 or die "Unable to compile key data : $!";
 
 $time = localtime();
 

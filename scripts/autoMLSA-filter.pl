@@ -72,6 +72,7 @@ my @infiles = @ARGV;
 my %accns;
 my @hashArray;
 my %wgs_seqs;
+my %names;
 my %all_g;
 my $g = 0;
 my $i = 0;
@@ -82,16 +83,18 @@ open KEYFILE, "$keyfile" or die "$keyfile unavailable : $!";
 
 #Load hash with keyfile data
 #Current format is Accession,AssemblyID,TaxID,SciName,GuessName,GI,Master
+#Current format is Accession,AssemblyID,TaxID,SciName,GI,Master,GenBankName,Country,Source,Strain,CultureCollection,Year
+#                  $match        0        1      2    3    4         5         6       7      8          9           10
 while (<KEYFILE>) {
     my $line = $_;
     chomp($line);
     my ( $accn, @values ) = split( "\t", $line );
-    ${ $headers{$accn} }{'assemid'}   = $values[0];
-    ${ $headers{$accn} }{'taxid'}     = $values[1];
-    ${ $headers{$accn} }{'sciname'}   = $values[2];
-    ${ $headers{$accn} }{'guessname'} = $values[3];
-    ${ $headers{$accn} }{'gi'}        = $values[4];
-    ${ $headers{$accn} }{'master'}    = $values[5];
+    $headers{$accn}{'assemid'}   = $values[0];
+    $headers{$accn}{'taxid'}     = $values[1];
+    $headers{$accn}{'sciname'}   = $values[2];
+    $headers{$accn}{'gi'}        = $values[3];
+    $headers{$accn}{'master'}    = $values[4];
+    $names{$values[0]} = $values[2];
 }
 
 close KEYFILE;
@@ -99,25 +102,25 @@ close KEYFILE;
 #Read input files
 foreach my $input (@infiles) {
     my $in = Bio::SeqIO->new( -file   => "$input",
-                              -format => 'Fasta' );
+                              -format => 'fasta' );
     while ( my $seq = $in->next_seq() ) {
 
         #Set up individual hashes for each gene
         my $id      = $seq->id;
         
         if (! exists($headers{$id}) ) {
-            &log("No keyfile information found for id $id, skipping\n");
+            logger("No keyfile information found for id $id, skipping\n");
             next;
         }
 
-        my $assemid = ${ $headers{$id} }{'assemid'};
+        my $assemid = $headers{$id}{'assemid'};
         
         if (!$assemid) {
             die("No assembly id/other id found for accession number $id\n");
         }
 
         if ( $assemid eq 'NULL' ) {
-            $assemid = ${ $headers{$id} }{'master'};
+            $assemid = $headers{$id}{'master'};
         }
         my $header = $assemid;
 
@@ -151,7 +154,7 @@ foreach my $key (@save) {
     $save{$key} = 1;
 }
 my $count = keys %save;
-&log("Starting search with $count keys (searching file $infiles[0])\n");
+logger("Starting search with $count keys (searching file $infiles[0])\n");
 for ( $g = 1 ; $g < scalar(@hashArray) ; $g++ ) {
     foreach my $key ( keys(%save) ) {
         if ( !defined( $hashArray[$g]{$key} ) ) {
@@ -160,15 +163,17 @@ for ( $g = 1 ; $g < scalar(@hashArray) ; $g++ ) {
         }
     }
     $count = keys %save;
-    &log("$count keys remaining after searching gene $g (file $infiles[$g])\n");
+    logger("$count keys remaining after searching gene $g (file $infiles[$g])\n");
 }
 $count = keys %save;
 
-&log( "$count genomes have all " . scalar(@hashArray) . " genes\n" );
+logger( "$count genomes have all " . scalar(@hashArray) . " genes\n" );
 $count = keys %remove;
-&log( "$count genomes did not have all " . scalar(@hashArray) . " genes\n" );
-&log( "These genomes did not have all genes and were removed:\n" );
-&log( join("\n", keys %remove) . "\n" );
+logger( "$count genomes did not have all " . scalar(@hashArray) . " genes\n" );
+logger( "These genomes did not have all genes and were removed:\n" );
+foreach my $id (sort keys %remove) {
+    logger("$id => $names{$id}\n");
+}
 $g = 0;
 
 while ( $g < scalar(@hashArray) ) {
@@ -205,7 +210,7 @@ sub sortHashwgs {
     $code1 cmp $code2;
 }
 
-sub log {
+sub logger {
     my $message = shift;
     print STDERR $message unless $quiet == 1;
     if ($logging) {
