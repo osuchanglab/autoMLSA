@@ -164,14 +164,14 @@ if ( !( defined $runid ) ) {
     if ( -d "../$runid" ) {
         if ( -d $runid ) {
             $runpath = File::Spec->rel2abs($runid);
-            $logpath = "./log/";
+            $logpath = File::Spec->rel2abs("./log/");
         } else {
             $runpath = File::Spec->rel2abs('.');
-            $logpath = "../log/";
+            $logpath = File::Spec->rel2abs("../log/");
         }
     } else {
         $runpath = File::Spec->rel2abs($runid);
-        $logpath = "./log/";
+        $logpath = File::Spec->rel2abs("./log/");
     }
     $logfile = $logpath . "$runid.log";
     logger("Command as submitted:\n");
@@ -725,7 +725,7 @@ my @keyfiles;
 foreach my $sequence ( sort keys %files ) {
     foreach my $fasout ( @{ $files{$sequence}{'fas'} } ) {
         my $keyfile = $fasout;
-        $keyfile =~ s/\.fas/.key/;
+        $keyfile =~ s/\.fas$/.key/;
         if ( -s $keyfile ) {
             push(@keyfiles,$keyfile);
         }
@@ -763,6 +763,12 @@ if (@searchfiles) {
 if ( -e "$runpath/all.keys" ) {
     `rm -f $runpath/all.keys`;
 }
+my $debug = 1;
+if ($debug == 1) {
+    print STDERR "Concatenating key files:\n";
+    print STDERR "cat $kcompile $runpath/keys.tmp\n";
+}
+
 system("cat $kcompile $runpath/keys.tmp | sort | uniq > $runpath/all.keys") == 0 or die "Unable to compile key data : $!";
 
 $time = localtime();
