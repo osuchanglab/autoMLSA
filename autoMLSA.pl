@@ -173,7 +173,7 @@ if ( !( defined $runid ) ) {
         $runpath = File::Spec->rel2abs($runid);
         $logpath = File::Spec->rel2abs("./log/");
     }
-    $logfile = $logpath . "$runid.log";
+    $logfile = $logpath . "/$runid.log";
     logger("Command as submitted:\n");
     logger("$incommand\n\n");
     if ( !-d $runpath ) {
