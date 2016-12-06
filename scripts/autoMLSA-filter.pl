@@ -94,7 +94,7 @@ while (<KEYFILE>) {
     $headers{$accn}{'sciname'}   = $values[2];
     $headers{$accn}{'gi'}        = $values[3];
     $headers{$accn}{'master'}    = $values[4];
-    if ($values[0] == 'NULL') {
+    if ($values[0] eq 'NULL') {
         $names{$accn} = $values[2];
     } else {
         $names{$values[0]} = $values[2];
