@@ -52,7 +52,7 @@ die("Unknown option entered.  Run command with option -h for available options.\
   if !$signal;
 
 if ( scalar(@ARGV) < 1 || $help ) {
-    die( "Proper syntax is $0 alignment1.fas alingment2.fas\n",
+    die( "Proper syntax is $0 -key file.key alignment1.fas alingment2.fas\n",
          "More than two alignment files is required.\n" );
 }
 if ( !$keyfile ) {
@@ -94,10 +94,14 @@ while (<KEYFILE>) {
     $headers{$accn}{'sciname'}   = $values[2];
     $headers{$accn}{'gi'}        = $values[3];
     $headers{$accn}{'master'}    = $values[4];
+    my $name = $values[5];
+    if ($name eq 'NULL') {
+        $name = $values[2];
+    }
     if ($values[0] eq 'NULL') {
-        $names{$accn} = $values[2];
+        $names{$values[4]} = $name;
     } else {
-        $names{$values[0]} = $values[2];
+        $names{$values[0]} = $name;
     }
 }
 
