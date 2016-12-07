@@ -10,7 +10,19 @@ No installation is required if dependencies are installed. See these optional st
 
 For questions about your PATH, see [this link](https://superuser.com/questions/284342/what-are-path-and-other-environment-variables-and-how-can-i-set-or-use-them) for a decent basic explanation.
 
-1. Edit line 43 to include your e-mail address. Your e-mail address will only be used to query the NCBI databases using the E-utilites. This is to allow NCBI to contact you if there is a problem with your requests or if you are abusing the system.
+1. Edit line 42 to include your e-mail address. Alternatively, set your EMAIL environment variable to your e-mail address. Your e-mail address will only be used to query the NCBI databases using the E-utilites. This is to allow NCBI to contact you if there is a problem with your requests or if you are abusing the system.
+
+   Environment variables:
+
+   ```bash
+   export EMAIL youremail@yourschool.edu
+   ```
+
+   or
+
+   ```tcsh
+   setenv EMAIL youremail@yourschool.edu
+   ```
 
    Make the change:
 
@@ -22,16 +34,16 @@ For questions about your PATH, see [this link](https://superuser.com/questions/2
     my $email = 'youremail@yourschool.edu';
     ```
 
-2. Edit line 53 to the path of your blast executables if they are not in your PATH.
+2. Edit line 56 to the path of your blast executables if they are not in your PATH.
 
-3. If you wish to include autoMLSA.pl in your path, but don't want to move the ./scripts folder to the same location, put the full path to the scripts folder in line 57. For example:
+3. If you wish to include autoMLSA.pl in your path, but don't want to move the ./scripts folder to the same location, put the full path to the scripts folder in line 60. For example:
 
     * Move autoMLSA.pl to a location in your PATH (e.g. /usr/bin or /usr/local/bin or ~/bin)
-    * Add the full path to the unpacked scripts directory to line 57 (eg. ~/libs/autoMLSA/scripts)
+    * Add the full path to the unpacked scripts directory to line 60 (eg. ~/libs/autoMLSA/scripts)
 
-4. Add the full path to the Gblocks to line 56 if it is not in your PATH.
+4. Add the full path to the Gblocks and/or noisy to lines 58/59 if the programs are not in your PATH.
 
-5. You can also change the optional defaults starting on line 69 if you are interested in changing them. For example:
+5. You can also change the optional defaults starting on line 74 if you are interested in changing them. For example:
 Change your 'prog' from 'tblastn':
 
     ```perl
