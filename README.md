@@ -1,5 +1,3 @@
-**Warning! NCBI is currently implementing changes that will affect the usability of this software. Please use the dev branch of autoMLSA if you are interested in keeping up with my attempts at fixing the problems caused by these changes. For now, assume that the master branch will NOT work. Once NCBI completes the changes (implementing https, not using GI numbers anymore) and the code is stable, I will merge the dev branch with master again.**
-
 # autoMLSA 
 
 The goal of this project is to enable users to generate high quality and robust **M**ulti-**L**ocus **S**equence **A**lignment phylogenetic trees with minimal effort. The default settings for the software work in many situations, and the software as a whole works with minimal user intervention. 
