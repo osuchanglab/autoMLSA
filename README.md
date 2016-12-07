@@ -1,5 +1,3 @@
-**This is a work in progress. I am attempting to fix the script to accomodate changes that NCBI has made since implementing https everywhere and removing some support for GI numbers. Stay tuned.**
-
 # autoMLSA 
 
 The goal of this project is to enable users to generate high quality and robust **M**ulti-**L**ocus **S**equence **A**lignment phylogenetic trees with minimal effort. The default settings for the software work in many situations, and the software as a whole works with minimal user intervention. 
@@ -41,11 +39,9 @@ Change your 'prog' from 'tblastn':
                      'prog'         = 'tblastn',
                      'nr'           = 1,
                      'complete'     = 1,
-                     'wgs'          = 0,
                      'evalue'       = '1e-5',
-                     'wgs_evalue'   = '1e-25',
                      'local_evalue' = '1e-5',
-                     'target'       = 250,
+                     'target'       = 500,
                      'coverage'     = 50
                    );
     ```
@@ -57,11 +53,9 @@ Change your 'prog' from 'tblastn':
                      'prog'         = 'blastn',
                      'nr'           = 1,
                      'complete'     = 1,
-                     'wgs'          = 0,
                      'evalue'       = '1e-5',
-                     'wgs_evalue'   = '1e-25',
                      'local_evalue' = '1e-5',
-                     'target'       = 250,
+                     'target'       = 500,
                      'coverage'     = 50
                    );
     ```
@@ -78,9 +72,10 @@ Required
 
 * BLAST+ version 2.2.31+
 * Perl version 5.10.1 or higher
+* NCBI Entrez Direct scripts - Run edirect-dl.pl from scripts folder. [See here](https://www.ncbi.nlm.nih.gov/books/NBK179288/) for more information
 * Perl Modules
   * BioPerl (Bio::Perl) v1.7.000 [(1.007000)](http://search.cpan.org/~cjfields/BioPerl-1.007000/)
-  * BioPerl Eutilities (Bio::DB::EUtilities) v1.75 or higher
+  * ~~BioPerl Eutilities (Bio::DB::EUtilities)~~ **NO LONGER REQUIRED**
 
 Multiple Sequence Alignment software
 * [MAFFT v7](http://mafft.cbrc.jp/alignment/software/) **recommended**
@@ -95,7 +90,7 @@ Optional
 
 # Pipeline Description
 
-This pipeline uses a set of input marker sequences for a BLAST search, finds the corresponding gene or protein sequences in the target BLAST databases (nt, wgs, and custom local databases), determines an appropriate organism name using information present in the NCBI taxonomy and nucleotide databases, determines which genomes have all genes of interest, aligns each gene individually, filters identical alignments with a log file to help determine which alignments are identical, determines the appropriate substitution model for each gene, and then concatenates the genes into an alignment while saving the partition data.
+This pipeline uses a set of input marker sequences for a BLAST search, finds the corresponding gene or protein sequences in the target BLAST databases (nt and custom local databases), determines an appropriate organism name using information present in the NCBI taxonomy and nucleotide databases, determines which genomes have all genes of interest, aligns each gene individually, filters identical alignments with a log file to help determine which alignments are identical, determines the appropriate substitution model for each gene, and then concatenates the genes into an alignment while saving the partition data.
 
 The output from the main script is a concatenated alignment file, the appropriate substitution model to provide to RAxML, and a partitioned dataset file that is formatted properly for input into RAxML. The RAxML wrapper provided along with the main script (autoMLSA-raxml.pl) will allow you to generate a phylogenetic tree based on the MLSA dataset. Alternatively, you can use these files to do your own custom analysis using RAxML or other phylogenetic tree generation software.
 
@@ -119,13 +114,13 @@ Should be:
 
 This is not completely necessary, but will help with naming files in a meaningful way throughout the process. The FASTA header ID (everything before the first space) is used to name the output files pertaining to each marker gene used.
 
-If you are only interested in sequences found in NCBI (nt, wgs, or both databases), then this will be all you need. You will run the program like this:
+If you are only interested in sequences found in NCBI (nt) then this will be all you need. You will run the program like this:
 
-`autoMLSA.pl -email yourname@yourinstitution.edu -runid sample_run_id -wgs -threads 4 -entrez_query "YourTaxonomyTerm[ORGANISM]" -- markers.fasta`
+`autoMLSA.pl -email yourname@yourinstitution.edu -runid sample_run_id -threads 4 -entrez_query "YourTaxonomyTerm[ORGANISM]" -- markers.fasta`
 
 Output will be sample\_run\_id.concat.derep and sample\_run\_id.partition, and the substitution model to supply to RAxML is printed to the screen and present in the log file at the end of the run.
 
-By default, a protein query is expected, and a TBLASTN analysis is done. This helps eliminate any annotation discrepencies with genomes present in the NCBI nt and wgs databases. Alignment software can more accurately align protein sequences and accurate alignments are preferred in most cases, with the cost being less phylogenetic resolution. Empirically, the default cutoffs for coverage and evalue are reasonable. Depending on the size of your clade of interest, you will have to increase the target cutoff to a larger value, especially for clades with several well represented species.
+By default, a protein query is expected, and a TBLASTN analysis is done. This helps eliminate any annotation discrepencies with genomes present in the NCBI nt database. Alignment software can more accurately align protein sequences and accurate alignments are preferred in most cases, with the cost being less phylogenetic resolution. Empirically, the default cutoffs for coverage and evalue are reasonable. Depending on the size of your clade of interest, you will have to increase the target cutoff to a larger value, especially for clades with several well represented species.
 
 ## Generating a phylogenetic tree using autoMLSA-raxml.pl
 
@@ -157,6 +152,8 @@ The .nwk files can be viewed with any phylogenetic tree software, and we recomme
 
 ## Using a local BLAST database
 
+NCBI has removed the ability to search the WGS database using a remote BLAST search from the command-line. Therefore, if you require a search of the WGS database, you will need to download the genomes from the WGS database and include then as a local BLAST database. Use the download\_genomes.pl script to do so. You will need to update the path (or include the programs in your PATH) to the edirect command-line utilties, which should be installed already prior to running the autoMLSA.pl script. To download the genomes, for example, the Pseudomonas genomes, do `autoMLSA/scripts/download_genomes.pl -type mlsa -download Pseudomonas`. The genomes will be donwloaded to a file called Pseudomonas.fasta. You can then combine this file with your own genome sequence files, or generate a BLAST DB using makeblastdb, to include these sequences in your local MLSA run. You will want to turn off searching of the nr/nt database if you use this approach, as you will be downloading the genomes present in nt as well. Do this by including -nonr as a flag for your autoMLSA run.
+
 When using your own BLAST database, the FASTA files have to be formatted properly prior to BLAST DB generation, excluding any FASTA files that have been downloaded from NCBI (if the FASTA files have a recognizable accession number, they will be detected). FASTA files containing the genome sequence need to be formatted properly to be recognized and understood by autoMLSA. This process can be accomplished with the fasta\_format.pl script located in the autoMLSA/scripts folder. The formatting script expects each genome to be contained in an individual FASTA file, with the format of strainName.fasta. 
 
 For example, if you were using the Escherichia coli strain K12, the genome file would be named K12.fasta. You would then provide the species name with the -genome flag:
@@ -181,13 +178,13 @@ After all of the genome sequences are formatted properly using the fasta\_format
 
 You would provide the full path to this database like so:
 
-`autoMLSA.pl -email yourname@yourinstitution.edu -runid sample_run_id -wgs -threads 4 -entrez_query "YourTaxonomyTerm[ORGANISM]" -local_db /path/to/all.fas -- markers.fasta`
+`autoMLSA.pl -email yourname@yourinstitution.edu -runid sample_run_id -threads 4 -entrez_query "YourTaxonomyTerm[ORGANISM]" -local_db /path/to/all.fas -- markers.fasta`
 
 If you have several local BLAST DBs, you must name them all uniquely, otherwise the results will be overwritten, and sequences from only one of the BLAST DBs will be contained in the final output.
 
 ## Understanding the intermediate files
 
-There are several intermediate files produced by the script, some of which are useful to understand what type of processing is going on during the run. Each input sequence has several output files, depending on the number of BLAST databases used as targets. BLAST output to the nt database takes the form of FASTA\_ID.out, with wgs being FASTA\ID.wgs.out, and local databases have the form of FASTA\_ID\_vs\_localdbname.local.out. Each BLAST output also has a corresponding key (.key) file that provides the mapping of IDs to assemblies and genome names, as well as the FASTA formatted output (.fas). After the FASTA formatted sequences are extracted from the output, sequences from all target databases are combined into a single file (.all.fas) and sequences from genomes that are missing one or more of the gene sequences are removed from the analysis (.all.fas.sorted). 
+There are several intermediate files produced by the script, some of which are useful to understand what type of processing is going on during the run. Each input sequence has several output files, depending on the number of BLAST databases used as targets. BLAST output to the nt database takes the form of FASTA\_ID.out and local databases have the form of FASTA\_ID\_vs\_localdbname.local.out. Each BLAST output also has a corresponding key (.key) file that provides the mapping of IDs to assemblies and genome names, as well as the FASTA formatted output (.fas). After the FASTA formatted sequences are extracted from the output, sequences from all target databases are combined into a single file (.all.fas) and sequences from genomes that are missing one or more of the gene sequences are removed from the analysis (.all.fas.sorted). 
 
 Then, each sorted FASTA file is aligned using MAFFT L-INS-i by default (.all.aln), and trimmed with Gblocks if desired (all.aln-gb). The sorted/trimmed alignments are then concatenated (sample\_run\_id.concat) and dereplicated to remove identical concatenated alignments (.concat.derep, .concat.derep.log keeps a log of which sequences are dereplicated). If a certain sequence is dereplicated that you are interested in keeping, you can extract the line(s) into a text file to rereplicate the identical sequences. You give this information to the script with the flag -rerep /path/to/dereplicated/sequences.txt. The replicated concatenated alignment will have the name sample\_run\_id.concat.derep.rerep. The best substitution model is then determined for each partition with the intermediate RAxML files resulting in the model\_test folder.
 
@@ -213,7 +210,7 @@ Turns off progress messages. Use noquiet to turn messages back on.
 
 **-email REQUIRED**
 
-Enter your email.  NCBI requires this information to continue.
+Enter your email.  NCBI requires this information to continue. Can also set EMAIL environment variable.
 
 **-runid REQUIRED**
 
@@ -238,10 +235,6 @@ Option searches for complete records only.  Adds "AND complete genome" to search
 **-nr|nonr** [on]
 
 Searches the nr/nt database.
-
-**-wgs** [off] \(No longer supported by NCBI. Working on fix.)
-
-Includes a separate search for wgs-deposited sequences.
 
 **-local\_db** (/path/to/blastdb1 /path/to/blastdb2)
 
@@ -277,23 +270,23 @@ Cleans up files and allows for addition of more genes to the analysis. This will
 
 ##PARAMETERS
 
-Except for evalue, by default the wgs and local values are set to equal the 'normal' parameters (e.g. -wgs\_target and -local\_target = -target).
+Except for evalue, by default the local values are set to equal the 'nr/nt' parameters (e.g. -local\_target = -target).
 
-**-evalue, -wgs\_evalue, and -local\_evalue**
+**-evalue, -local\_evalue**
 
 Sets the e-value cutoffs.
 
-**-target, -wgs\_target, -local\_target**
+**-target, -local\_target**
 
 Sets the limit on number of alignments returned. 
 
-**-coverage, -wgs\_cov, and -local\_cov**
+**-coverage and -local\_cov**
 
 Sets the threshold for coverage to include.  By default, includes all hits, regardless of coverage.  Values between 25 and 100 are valid [ex: 50 for alignment of 50% of the query and subject sequences]. 
 
-**-entrez\_query and -wgs\_entrez\_query**
+**-entrez\_query**
 
-Sets an entrez query limiter to blast search.  Useful for searching only within a species, genus, etc. [ORGANISM] flag REQUIRED for wgs searches.
+Sets an entrez query limiter to blast search.  Useful for searching only within a species, genus, etc.
 
 Example: For looking only at Actinobacteria, use 'Actinobacteria[ORGANISM]'
 
@@ -307,26 +300,46 @@ Removes all files generated after BLAST search output.  Allows for restarting of
 
 Stops script prior to filtering for genes found in all genomes or prior to alignment.  Useful for acquiring gene sequences without requiring completion of the entire pipeline, or doing the BLAST searches using a slower machine, saving the alignments for a more powerful machine.
 
-**-concat**
+# Description of Included Files
 
-Flag required to continue when .manual files are present.  Fix the genome names in the manual files and supply -concat to continue. 
+| Filename | Description |
+| -------- | ----------- |
+| autoMLSA.pl | Main program |
+| README.md | This README file |
+| LICENSE | Description of GPL License |
+| scripts/ProteinModelSelection.pl | Finds best protein model for each protein alignment |
+| scripts/autoMLSA-concat.pl | Concatenates alignments; renames accessions to species names |
+| scripts/autoMLSA-derep.pl | Removes identical aligned sequences |
+| scripts/autoMLSA-fasta\_rename.pl | Use to rename non-concatenated sequences **NOT WORKING** |
+| scripts/autoMLSA-filter.pl | Removes genomes that are missing one or more input genes/proteins |
+| scripts/autoMLSA-raxml.pl | Use this to generate the phylogenetic tree after concatenation |
+| scripts/autoMLSA-rerep.pl | Use this to add essential sequences back into the alignment so they appear in the final tree |
+| scripts/autoMLSA-searchio.pl | This script is used to parse tab-delimited BLAST output for sequence and accession data |
+| scripts/auto\_edirect.pl | This script runs the NCBI edirect command-line tools to find species, strains, and assembly information |
+| scripts/edirect-dl.pl | Use this to download the edirect tools if you do not have them installed already |
+| scripts/fasta\_format.pl | Use this to format user-generated FASTA data |
+| scripts/download\_genomes.pl | Use this to download a genome dataset from NCBI to use in BLAST search. |
 
 # Citations
 
 Please cite:
 
+```
 Davis II EW, Weisberg AJ, Tabima JF, Grunwald NJ, Chang JH. (2016) Gall-ID: tools for genotyping gall-causing phytopathogenic bacteria. PeerJ 4:e2222. https://doi.org/10.7717/peerj.2222
+```
 
 if you use this software. Also, please cite these other publications as integral parts of autoMLSA:
-
+```
 Stamatakis A. (2014) RAxML version 8: a tool for phylogenetic analysis and post-analysis of large phylogenies. Bioinformatics 30(9):1312–1313. https://doi.org/10.1093/bioinformatics/btu033
 
 Katoh K, Standley DM. (2013) MAFFT Multiple Sequence Alignment Software Version 7: Improvements in Performance and Usability. Mol. Biol. Evol. 30(4):772–780. https://doi.org/10.1093/molbev/mst010
 
 Dress AWM, Flamm C, Fritzsch G, Grünewald S, Kruspe M, Prohaska SJ, & Stadler PF. (2008). Noisy: identification of problematic columns in multiple sequence alignments. Algorithms for Molecular Biology : AMB, 3, 7. http://doi.org/10.1186/1748-7188-3-7
-
+```
 
 # History
+
+v2.0.0 - 2016-12-06 - New version dependent on NCBI edirect. No longer requires BioPerl EUtilities. INCOMPATIBLE with previous versions.
 
 v1.0.1 - 2016-10-10 - Dev branch started.
 

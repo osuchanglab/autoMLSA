@@ -37,8 +37,8 @@ use Bio::SeqIO;
 use File::Spec;
 use Cwd 'abs_path';
 
-my $version = '1.0.1';
-my $date = 'October 10, 2016';
+my $version = '2.0.0';
+my $date = 'December 6, 2016';
 my $email = '';    #Can set to default
 if (defined $ENV{'EMAIL'}) {
     $email ||= $ENV{'EMAIL'};
@@ -1287,7 +1287,7 @@ Turns off progress messages. Use noquiet to turn messages back on.
 
 =item B<-email> (email@univ.edu) - B<REQUIRED>
 
-Enter your email.  NCBI requires this information to continue.
+Enter your email.  NCBI requires this information to continue. Can also set EMAIL environment variable instead.
 
 =item B<-runid> (unique ID) - will generate directory for output - B<REQUIRED>
 
