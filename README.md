@@ -339,7 +339,7 @@ Dress AWM, Flamm C, Fritzsch G, Grünewald S, Kruspe M, Prohaska SJ, & Stadler P
 
 # History
 
-v2.0.0 - 2016-12-06 - New version dependent on NCBI edirect. No longer requires BioPerl EUtilities. INCOMPATIBLE with previous versions.
+v2.0.0 - 2016-12-06 - New version dependent on NCBI edirect. No longer requires BioPerl EUtilities. WGS no longer supported. INCOMPATIBLE with previous versions.
 
 v1.0.1 - 2016-10-10 - Dev branch started.
 
