@@ -280,6 +280,10 @@ Supply a filename with tab delimited names to rereplicate prior to model selecti
 
 Cleans up files and allows for addition of more genes to the analysis. This will delete previous results, so start a new analysis with a new runid if you are interested in saving your results.  Automatically cleans up old files when new genes are added to the analysis.  Previous alignments are not usable as some genomes may not contain all genes once more genes are added to the analysis.
 
+**-relaxed**
+
+Decreases match and mismatch scores, as well as gap costs to allow for more distant matches for nucleotide searches.
+
 ##PARAMETERS
 
 Except for evalue, by default the local values are set to equal the 'nr/nt' parameters (e.g. -local\_target = -target).
@@ -350,6 +354,8 @@ Dress AWM, Flamm C, Fritzsch G, Grünewald S, Kruspe M, Prohaska SJ, & Stadler P
 ```
 
 # History
+
+v2.1.0 - 2016-12-12 - Added -relaxed command to allow more dis-similar BLAST results when using nucleotide queries. Added support for failed elink attempts.
 
 v2.0.0 - 2016-12-06 - New version dependent on NCBI edirect. No longer requires BioPerl EUtilities. WGS no longer supported. INCOMPATIBLE with previous versions.
 

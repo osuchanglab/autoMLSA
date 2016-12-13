@@ -37,8 +37,8 @@ use Bio::SeqIO;
 use File::Spec;
 use Cwd 'abs_path';
 
-my $version = '2.0.0';
-my $date = 'December 6, 2016';
+my $version = '2.1.0';
+my $date = 'December 12, 2016';
 my $email = '';    #Can set to default
 if (defined $ENV{'EMAIL'}) {
     $email ||= $ENV{'EMAIL'};
@@ -129,7 +129,7 @@ my $signal = GetOptions(
                          'clear_input',        'clear_dbs',
                          'debug_cleanup',      'concat',
                          'checkpoint=s',       'trimmer_params=s',
-                         'version|v'
+                         'version|v',          'relaxed'
                        );
 
 #Print help statements if specified
@@ -609,6 +609,12 @@ foreach my $infile (@inputs) {
                                     $outfmt );
                 if ( $blast_check !~ /tblastn/ ) {
                     $command .= " " . join( " ", "-task", "blastn" );
+                    if ($options{'relaxed'}){
+                        $command .= " " . join( " ", '-gapopen', '1',
+                                                     '-gapextend', '1',
+                                                     '-reward', '1',
+                                                     '-penalty', '-2');
+                    }
                 }
                 if ( $j == 0 ) {
                     $command .= " "
@@ -756,14 +762,16 @@ if (@searchfiles) {
         if ( ! -e "$runpath/keys.tmp" ) {
             system("touch $runpath/keys.tmp");
         }
-        my $command = join( " ", $elinkpath, "$runpath/all.accn", '-log', $logfile, '--email', $email, '>>', "$runpath/keys.tmp" );
-        system($command) == 0 or die "Unable to generate keyfile!";
+        elink();
     }
+} elsif ( -s "$runpath/all.accn" && ! -s "$runpath/keys.tmp" ) {
+    #This occurs if the elink fails
+    elink();
 }
 if ( -e "$runpath/all.keys" ) {
     `rm -f $runpath/all.keys`;
 }
-my $debug = 1;
+my $debug = 0;
 if ($debug == 1) {
     print STDERR "Concatenating key files:\n";
     print STDERR "cat $kcompile $runpath/keys.tmp\n";
@@ -1201,6 +1209,25 @@ sub varcheck {
 
 }
 
+sub elink {
+    my $retry = 1;
+    while ($retry < 6) {
+        my $command = join( " ", $elinkpath, "$runpath/all.accn", '-log', $logfile, '--email', $email, '>>', "$runpath/keys.tmp" );
+        my $check = system($command);
+        if ($check != 0) {
+            if ($retry == 5) {
+                logger("Unable to generate keyfile. Check your parameters and connection and try again.\n");
+                exit(-1);
+            }
+            logger("Unable to generate keyfile on try $retry. Trying again.\n");
+            $retry++;
+        } else {
+            last;
+        }
+    }
+    `mv -f $runpath/all.accn $runpath/all.accn.dled`; 
+}
+
 sub logger {
     my $message = shift;
     print STDERR $message unless $options{quiet} == 1;
@@ -1344,6 +1371,10 @@ Supply a filename with tab delimited names to rereplicate prior to model selecti
 =item B<-cleanup>
 
 Cleans up files and allows for addition of more genes to the analysis. This will delete previous results, so start a new analysis with a new runid if you are interested in saving your results.  Automatically cleans up old files when new genes are added to the analysis.  Previous alignments are not usable as some genomes may not contain all genes once more genes are added to the analysis.
+
+=item B<-relaxed>
+
+Decreases match and mismatch scores, as well as gap costs to allow for more distant matches for nucleotide searches.
 
 B<PARAMETERS>
 
