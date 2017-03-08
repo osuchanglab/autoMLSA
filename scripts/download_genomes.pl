@@ -9,6 +9,7 @@ my $type = ''; # Options are mlsa or ani
 my $fmt  = 'abbr';
 my $dl = 0;
 my $debug = 0;
+my $rep = 0;
 
 if (scalar(@ARGV) == 0) {
     printHelp();
@@ -20,7 +21,8 @@ my $signal = GetOptions(
                          'f|format=s' => \$fmt,
                          'd|download' => \$dl,
                          'h|help'   => \$help,
-                         'debug'    => \$debug
+                         'debug'    => \$debug,
+                         'r|rep'    => \$rep
                        );
 
 my $term = shift;
@@ -29,6 +31,7 @@ my $edirectpath = ''; # Set to /path/to/edirect/ if not in $PATH
 my $esearch = $edirectpath . 'esearch';
 my $efetch  = $edirectpath . 'efetch';
 my $xtract  = $edirectpath . 'xtract';
+my $efilter = $edirectpath . 'efilter';
 my $elink   = $edirectpath . 'elink';
 
 if ($help || !$term) {
@@ -51,16 +54,30 @@ if ( $fmt !~ /abbr|full|strain/ ) {
     exit(-1);
 }
 
-if ($type !~ /mlsa|ani/) {
+if ($type !~ /mlsa|ani/i) {
     print STDERR "Type: '$type' is invalid or missing.\n";
     print STDERR "Valid types are mlsa or ani.\n";
     print STDERR "Please check your settings and try again.\n";
     exit(-1);
 }
 
-my $query = qq{'$term\[ORGANISM\]'};
+my $query = qq{$term};
 
-my $assembly = `$esearch -db genome -query $query | $elink -batch -target assembly`;
+if ( $term !~ /ORGANISM|ORGN/ ) {
+    $query = qq{$query\[ORGANISM\]};
+} 
+
+#Can add other things to query here
+
+$query = qq{'$query'};
+
+my $command = "$esearch -db genome -query $query | $elink -batch -target assembly";
+
+if ( $rep ) {
+    $command .= " | $efilter -query 'representative\[Properties\]'";
+}
+
+my $assembly = `$command`;
 my $count = getCount($assembly);
 print STDERR "Found $count genomes to download.\n";
 print STDERR "Expect ".($count*5)."MB to ".($count*7)."MB of data for download.\n";
@@ -83,7 +100,7 @@ close($historyfh);
 
 my $unknown = 1; #Counter for organisms with no strain name
 
-if ( $type =~ /ani/ ) {
+if ( $type =~ /ani/i ) {
     my @command = ("cat assemlinks |",
                    "efetch -format docsum |",
                    "xtract -pattern DocumentSummary",
@@ -133,6 +150,7 @@ if ( $type =~ /ani/ ) {
             $strain =~ s/\(//g;
             $strain =~ s/\)//g;
             $strain =~ s/://g;
+            $strain =~ s/;//g;
         }
         my $outname = '';
         if ($fmt =~ /full/ || $species =~ /sp\./) {
@@ -176,7 +194,7 @@ if ( $type =~ /ani/ ) {
 
         #print $outname."\n";
     }
-} else {
+} elsif ($type =~ /mlsa/i {
     # elink -target nuccore -name assembly_nuccore_insdc | efetch -format fasta > ! rhizobiaceae.fasta
     my $outname = "$term.fasta";
     if (-s "$outname") {
@@ -210,7 +228,7 @@ sub getCount {
 
 sub printHelp {
     print STDERR "Please re-submit command with this syntax:\n";
-    print STDERR "$0 -type [mlsa or ani] -format [format] [NCBI Taxonomy term]\n";
+    print STDERR "$0 -type [mlsa or ani] -format [format] -rep [NCBI Taxonomy term]\n";
     print STDERR "Acceptable output formats are full, abbr (default), and strain\n";
     print STDERR "Example: $0 -type mlsa -format abbr Pseudomonas\n";
     exit();
