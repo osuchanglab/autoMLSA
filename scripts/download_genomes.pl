@@ -38,7 +38,7 @@ if ($help || !$term) {
     printHelp();
 }
 
-my $email = ''; #set to email address 
+my $email = ''; #set to email address
 if (defined $ENV{'EMAIL'}) {
     $email ||= $ENV{'EMAIL'};
 }
@@ -65,7 +65,7 @@ my $query = qq{$term};
 
 if ( $term !~ /ORGANISM|ORGN/ ) {
     $query = qq{$query\[ORGANISM\]};
-} 
+}
 
 #Can add other things to query here
 
@@ -194,7 +194,7 @@ if ( $type =~ /ani/i ) {
 
         #print $outname."\n";
     }
-} elsif ($type =~ /mlsa/i {
+} elsif ($type =~ /mlsa/i) {
     # elink -target nuccore -name assembly_nuccore_insdc | efetch -format fasta > ! rhizobiaceae.fasta
     my $outname = "$term.fasta";
     if (-s "$outname") {
