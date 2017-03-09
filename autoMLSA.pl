@@ -530,7 +530,7 @@ foreach my $infile (@inputs) {
 #        my $outfmt =
 #          '\'7 qseqid sseqid sacc pident qlen length evalue qcovhsp staxids sscinames stitle sseq\'';
         my $outfmt =
-          '\'7 qseqid sseqid sacc pident qlen length evalue qcovhsp stitle sseq\'';
+          '\'7 qseqid sseqid saccver pident qlen length evalue qcovhsp stitle sseq\'';
 
         #Open file to get sequences for BLAST
         my $i = 0;
@@ -621,7 +621,7 @@ foreach my $infile (@inputs) {
                       . join( " ",
                               "-entrez_query", "\'$entrez_query\'" );
 
-                } 
+                }
                 if ( $j == 0 ) {
                     $command .= " -remote";
                 }
