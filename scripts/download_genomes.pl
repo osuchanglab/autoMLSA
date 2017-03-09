@@ -214,6 +214,7 @@ if ( $type =~ /ani/i ) {
         print STDERR "Check your settings and permissions and try again.\n";
         exit(-1);
     } else {
+        `rm -f assemlinks`;
         print STDERR "Downloaded genomes to $outname\n";
         print STDERR "Generate a blast database from this file using makeblastdb to include in autoMLSA pipeline.\n";
     }
