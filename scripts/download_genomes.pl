@@ -10,6 +10,7 @@ my $fmt  = 'abbr';
 my $dl = 0;
 my $debug = 0;
 my $rep = 0;
+my $outname = '';
 
 if (scalar(@ARGV) == 0) {
     printHelp();
@@ -22,7 +23,8 @@ my $signal = GetOptions(
                          'd|download' => \$dl,
                          'h|help'   => \$help,
                          'debug'    => \$debug,
-                         'r|rep'    => \$rep
+                         'r|rep'    => \$rep,
+                         'o|outname=s' => \$outname
                        );
 
 my $term = shift;
@@ -196,7 +198,20 @@ if ( $type =~ /ani/i ) {
     }
 } elsif ($type =~ /mlsa/i) {
     # elink -target nuccore -name assembly_nuccore_insdc | efetch -format fasta > ! rhizobiaceae.fasta
-    my $outname = "$term.fasta";
+    if (! $outname) {
+        my $num = () = split(/ /, $term, -1);
+        if ( $num > 1) {
+            print STDERR "Please provide an output filename prefix (e.g. -o pseudomonas.fasta) to continue.\n";
+            exit();
+        }
+        $outname = $term;
+        #Sanitize output name
+        $outname =~ s/\[ORGANISM\]|\[ORGN\]//;
+        $outname =~ s/\/|\|,|;|:| |\[|\]/_/g;
+        $outname .= '.fasta';
+    }
+    system("touch $outname") == 0 or die "Unable to make fasta file $outname : $!";
+    print STDERR "Downloading genomes to file - $outname\n";
     if (-s "$outname") {
         print STDERR "Already found output file: $outname\n";
         print STDERR "Generate a blast database from this file using makeblastdb to use in autoMLSA.\n";
@@ -208,7 +223,7 @@ if ( $type =~ /ani/i ) {
                    "efetch -format fasta > $outname");
     my $command = join(" ", @command);
     system($command) == 0 or die "Unable to download $term genome sequences!\n";
-    if ( ! -s "$term.fasta" ) {
+    if ( ! -s "$outname" ) {
         print STDERR "Unable to find $outname file.\n";
         print STDERR "Problem downloading and/or saving the file.\n";
         print STDERR "Check your settings and permissions and try again.\n";
@@ -229,7 +244,7 @@ sub getCount {
 
 sub printHelp {
     print STDERR "Please re-submit command with this syntax:\n";
-    print STDERR "$0 -type [mlsa or ani] -format [format] -rep [NCBI Taxonomy term]\n";
+    print STDERR "$0 -type [mlsa or ani] -format [format] -rep [NCBI Taxonomy term] -o [output name prefix]\n";
     print STDERR "Acceptable output formats are full, abbr (default), and strain\n";
     print STDERR "Example: $0 -type mlsa -format abbr Pseudomonas\n";
     exit();
