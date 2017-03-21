@@ -73,7 +73,7 @@ my $filtergenomespath =
 
 my %defaults = (
                  'prog'         => 'tblastn',
-                 'nr'           => 1,
+                 'remote'       => 'nt',
                  'complete'     => 1,
                  'evalue'       => '1e-5',
                  'local_evalue' => '1e-5',
@@ -120,8 +120,8 @@ my $signal = GetOptions(
                          'evalue=f',           'target=i',
                          'coverage=f',         'local_evalue=f',
                          'local_target=i',     'local_cov=f',
-                         'entrez_query=s',     'nr!',
-                         'complete!',          
+                         'entrez_query=s',     'remote=s',
+                         'complete!',
                          'local_db=s@',        'threads=i',
                          'align_prog=s',       'align_params=s',
                          'trimmer=s',            'rereplicate:s',
@@ -241,7 +241,7 @@ if ( !( defined $runid ) ) {
 
 #Set some defaults
 $options{complete} //= $defaults{complete};
-$options{nr}       //= $defaults{nr};
+#$options{remote}   //= $defaults{remote};
 
 if ( scalar(@ARGV) == 0 && scalar( keys %inputs ) == 0 ) {
     pod2usage(
@@ -285,7 +285,6 @@ $options{prog} //= $defaults{prog};
 if ( defined $options{prog} ) {
     if ( $options{prog} =~ /^blastn$/ || $options{prog} =~ /^tblastn$/ ) {
         $options{dbfrom} = 'nucleotide';
-        $options{db}     = 'nt';
     } else {
         pod2usage(
             -verbose => 0,
@@ -354,10 +353,10 @@ if ( $options{trimmer} ) {
     }
 }
 
-if ( $options{nr} == 0 && !defined( $options{local_db} ) )
+if ( !defined($options{remote}) && !defined( $options{local_db} ) )
 {
     logger(
-        "No BLAST searches scheduled to run. Please select at least one (-nr or supply a local BLAST db to -local_db.)"
+        "No BLAST searches scheduled to run. Please select at least one (-remote nt or supply a local BLAST db to -local_db.)"
     );
     die("\n");
 }
@@ -503,8 +502,8 @@ logger("Blast searches started at $time\n\n");
 
 foreach my $infile (@inputs) {
     for ( my $j = 0 ; $j < 2 ; $j++ ) {
-        if ( $options{nr} == 0 ) {
-            $j = 1;    #Skip nr search if nr is not set
+        if ( !defined($options{remote}) ) {
+            $j = 1;    #Skip remote search
         }
         if ( $j == 1 && !defined( $options{local_db} ) ) {
             $j = 2;
@@ -515,7 +514,7 @@ foreach my $infile (@inputs) {
         my ( $evalue, $target, $entrez_query, $threads );
         my ( @dbs, @outfiles );
         if ( $j == 0 ) {
-            push( @dbs, $options{db} );
+            push( @dbs, $options{remote} );
             $evalue       = $options{evalue};
             $target       = $options{target};
             $entrez_query = $options{entrez_query};
@@ -1336,9 +1335,9 @@ Sets blast program to run.  blastn and tblastn are valid options.
 
 Option searches for complete records only.  Adds "AND complete genome" to searches that have an entrez query (supplied by -entrez_query 'text').
 
-=item B<-nr|nonr> [on]
+=item B<-remote> (nt) [off]
 
-Searches the nr/nt database.
+Searches the nt (or other valid e.g. refseq_genomic) remote database.
 
 =item B<-local_db> (/path/to/blastdb1 /path/to/blastdb2)
 
