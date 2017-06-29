@@ -303,7 +303,7 @@ if ( defined $options{threads} ) {
         );
     } elsif ( $options{threads} > $check ) {
         logger(
-            "Asking for more threads than cores are available.  Please check your parameters and try again."
+            "Asking for more threads than cores are available.  Please check your parameters and try again.\n"
         );
         die("\n");
     } else {
@@ -428,7 +428,7 @@ if (%options) {
     foreach
       my $value ( $options{coverage}, $options{local_cov} )
     {
-        if ( $value > 100 || $value < 25 ) {
+        if ( $value > 100 || $value < 20 ) {
             $coverage++;
             $death++;
         }
@@ -440,7 +440,7 @@ if (%options) {
       "Valid alignment values are integers between 1 and 20000. Check your parameters and try again.\n"
       if $target > 0;
     print STDERR
-      "Valid coverage values are numbers between 100 and 25. Check your parameters and try again.\n"
+      "Valid coverage values are numbers between 100 and 20. Check your parameters and try again.\n"
       if $coverage > 0;
     die("\n") if $death > 0;
 }
@@ -448,7 +448,15 @@ if (%options) {
 my @db_names = ( ".nhr", ".nin", ".nsq" );
 
 if ( $options{local_db} ) {
+    my %blastdbseen;
     foreach my $db ( @{ $options{local_db} } ) {
+        my ($vol, $dir, $dbfile) = File::Spec->splitpath( $db );
+        my $blastdbabs = File::Spec->rel2abs( $db );
+        if ( ! exists( $blastdbseen{$dbfile} )) {
+            $blastdbseen{$dbfile} = $blastdbabs;
+        } else {
+            die("Already found blast DB with name $dbfile ( $blastdbseen{$dbfile} ). $blastdbabs is the duplicate value. Check your input and try again.\n");
+        }
         my $dbpath = abs_path($db);
         foreach my $file (@db_names) {
             my $testpath = $dbpath.$file;
