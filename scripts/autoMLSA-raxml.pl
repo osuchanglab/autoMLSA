@@ -36,6 +36,7 @@ use List::Util qw(max);
 use Scalar::Util qw(looks_like_number);
 
 my $incommand = join( " ", $0, @ARGV );
+pod2usage( -verbose => 0 ) if !@ARGV;
 
 my $raxmldir = '';
 my ( $runid, $log, $align, $model, $boot, $ml, $part, $ft );
@@ -563,7 +564,7 @@ raxml_wrapper.pl - Wrapper to run RAxML to generate maximum-likelihood based phy
 
 =head1 SYNOPSIS
 
-raxml_wrapper.pl -runid testrun1 -alignment fasta.aln -model PROTGAMMALG [options] -(program)
+raxml_wrapper.pl -runid runid -alignment runid.aln -model PROTGAMMALG -partition runid.partition -SSE3 -PTHREADS threads -(program)
 
 =head1 OPTIONS
 
