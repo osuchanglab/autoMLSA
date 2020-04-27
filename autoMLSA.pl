@@ -445,7 +445,8 @@ if (%options) {
     die("\n") if $death > 0;
 }
 
-my @db_names = ( ".nhr", ".nin", ".nsq" );
+my @db_names = ( ".nhr", ".nsq", ".nin" );
+#my @db_names = ( ".nhr" );
 
 if ( $options{local_db} ) {
     my %blastdbseen;
@@ -458,11 +459,14 @@ if ( $options{local_db} ) {
             die("Already found blast DB with name $dbfile ( $blastdbseen{$dbfile} ). $blastdbabs is the duplicate value. Check your input and try again.\n");
         }
         my $dbpath = abs_path($db);
-        foreach my $file (@db_names) {
-            my $testpath = $dbpath.$file;
-            if (! -e $testpath ) {
-                print STDERR "Unable to find file $testpath. Entered parameter: $db.\nCheck to ensure you have generated a blast DB for this file.\n";
+        foreach my $file_ext (@db_names) {
+            my $testpath = $dbpath."*".$file_ext;
+            foreach my $dbitem (glob "$testpath") {
+                #if (! -e glob "$testpath" ) {
+                if  (! -e "$dbitem") {
+                print STDERR "Unable to find file $dbitem. Entered parameter: $db.\nCheck to ensure you have generated a blast DB for this file.\n";
                 die("\n");
+                }
             }
         }
         $db = $dbpath;
@@ -622,6 +626,10 @@ foreach my $infile (@inputs) {
                                                      '-reward', '1',
                                                      '-penalty', '-2');
                     }
+                }
+                if ($options{'relaxed'}){
+                    $command .= " " . join( " ", '-gapopen', '6',
+                                                 '-gapextend', '2');
                 }
                 if ( $j == 0 ) {
                     $command .= " "
