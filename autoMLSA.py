@@ -12,6 +12,7 @@ import subprocess
 import re
 import glob
 import shlex
+from multiprocessing import Pool
 from hashlib import blake2b
 from collections import defaultdict
 from shutil import copy
@@ -276,16 +277,9 @@ def run_argparse():
     parser.add_argument(
         '--dir', help='Path to the target genome directory with FASTA files.',
         type=extant_file, nargs='+')
-    # parser.add_argument(
-    #     '--local_db', help='Path to local nucleotiode blast DB alias.',
-    #     type=str, action='append')
     parser.add_argument(
         '-e', '--evalue', help='E-value cutoff for BLAST searches. [1e-5]',
         type=float)
-    # parser.add_argument(
-    #     '-m', '--target',
-    #     help='Sets the limit on number of [m]ax targets. [500]',
-    #     type=int)
     parser.add_argument(
         '-c', '--coverage', help='Sets the coverage cut-off threshold. [50]',
         type=int)
@@ -300,6 +294,10 @@ def run_argparse():
     parser.add_argument(
         '--dups', help='Allow for duplicate query names for more sequence '
                        'coverage across disparate organisms.',
+        action='store_true', default=False)
+    parser.add_argument(
+        '-pb', '--printblast', help='Print BLAST searches and exit. For '
+                                    'submitting jobs to clusters.',
         action='store_true', default=False)
     parser.add_argument(
         '--email', help='E-mail is required for downloading data from '
@@ -721,12 +719,12 @@ def get_queries(logger, rundir, dups, queries):
 
 
 def generate_blast_list(logger, rundir, exe, queries,
-                        targets, evalue, threads):
+                        targets, evalue, threads, pb):
     """
     Generates list of BLAST searches that need to be run
 
     input  - blast type, exes, queries, and targets
-    output - list of BLAST commands, hash of blast output names per target
+    output - hash of blast output names per target
     """
     cmds = []
     blastout = defaultdict(list)
@@ -734,6 +732,7 @@ def generate_blast_list(logger, rundir, exe, queries,
     outfmt = '7 qseqid sseqid saccver pident qlen length evalue qcovhsp '\
         'stitle sseq'
     base_cmd = [exe, '-evalue', str(evalue), '-outfmt', outfmt]
+    cmd = []
     if not os.path.exists(blastdir):
         os.mkdir(blastdir)
     for target in targets:
@@ -741,17 +740,43 @@ def generate_blast_list(logger, rundir, exe, queries,
         for query in queries:
             query_base = os.path.splitext(os.path.basename(query))[0]
             outname = '{}_vs_{}.tab'.format(query_base, target_base)
-            blastout[target].append(os.path.join(blastdir, outname))
-            if (os.path.exists(outname) and os.path.getsize(outname) == 0) or\
-               not os.path.exists(outname):
-                cmd = base_cmd + ['-db', target,
-                                  '-query', query,
-                                  '-out', os.path.join(blastdir, outname)]
+            outpath = os.path.join(blastdir, outname)
+            blastout[target].append(os.path.join(outpath))
+            cmd = base_cmd + ['-db', target,
+                              '-query', query,
+                              '-out', outpath]
+            if os.path.exists(outpath):
+                size = os.path.getsize(outpath)
+                if size == 0:
+                    cmds.append(cmd)
+            else:
                 cmds.append(cmd)
-    return(cmds, blastout)
+
+    if cmds:
+        if pb:
+            blastfile = os.path.join(rundir, 'blastcmds.txt')
+            with open(blastfile, 'w') as fh:
+                for cmd in cmds:
+                    fh.write(shlex.join(cmd) + '\n')
+            msg = 'BLAST commands written to {}. Exiting.'
+            logger.info(msg.format(blastfile))
+            exit(0)
+        else:
+            msg = 'Running {} BLAST searches using {} CPUs.'
+            logger.info(msg.format(len(cmds), threads))
+            p = Pool(threads)
+            with p:
+                p.map(run_blast_search, cmds)
+    else:
+        logger.info('No BLAST searches remaining. Moving to parse.')
+    return(blastout)
 
 
-def run_cmd(exes, cmds, blastout):
+def run_blast_search(cmd):
+    subprocess.run(cmd)
+
+
+def run_cmd(exes, blastout):
     """Temporary command
 
     input  - exes dictionary
@@ -788,14 +813,15 @@ def main():
     args.logger.info('Extracting query FASTA files if necessary.')
     queries = get_queries(args.logger, args.rundir, args.dups, args.query)
 
-    args.logger.info('Generate list of BLAST searches and outputs.')
-    cmds, blastout = generate_blast_list(args.logger, args.rundir,
-                                         exes[args.program], queries,
-                                         newfastas, args.evalue, args.threads)
-    print(shlex.join(cmds[0]))
+    args.logger.info('Generating list of BLAST searches and outputs.')
+    blastout = generate_blast_list(args.logger, args.rundir,
+                                   exes[args.program], queries, newfastas,
+                                   args.evalue, args.threads, args.printblast)
+
+    # print(shlex.join(cmds[0]))
     # args.logger.debug(pprint.pformat(cmds))
     # Run commands
-    run_cmd(exes, cmds, blastout)
+    run_cmd(exes, blastout)
 
 
 if __name__ == '__main__':
