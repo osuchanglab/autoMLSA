@@ -9,7 +9,6 @@ import logging
 import json
 import pprint
 import subprocess
-import re
 import glob
 import shlex
 from multiprocessing import Pool
@@ -191,6 +190,9 @@ def get_fasta_dir(x, logger, rundir):
         if check_if_fasta(fa):
             # sys.stderr.write('{} is FASTA.\n'.format(fa))
             fasta_list.append(os.path.abspath(fa))
+        else:
+            msg = '{} does not appear to be FASTA file, skipping.'
+            logger.debug(msg.format(fa))
     return fasta_list
 
 
@@ -203,16 +205,6 @@ def check_if_fasta(fa):
             return True
         else:
             return False
-
-
-def validate_email(x):
-    """
-    'Type' for argparse - checks that email appears somewhat valid
-    """
-    if not re.fullmatch(r"[^@]+@[^@]+\.[^@]+", x):
-        msg = '{} does not appear to be a valid email.'
-        raise argparse.ArgumentTypeError(msg.format(x))
-    return x
 
 
 def sanitize_path(s):
@@ -330,10 +322,8 @@ def run_argparse():
                                     'submitting jobs to clusters.',
         action='store_true', default=False)
     parser.add_argument(
-        '--email', help='E-mail is required for downloading data from '
-                        'NCBI. You can also set the $EMAIL environment '
-                        'variable.',
-        type=validate_email)
+        '--outgroup', help='Name of outgroup file or strain to root on.',
+        type=str)
     parser.add_argument(
         '--debug', help='Turn on debugging messages.', action='store_true',
         default=False)
@@ -451,14 +441,11 @@ def validate_arguments(args, config):
             args.threads = int(config['threads'])
         else:
             args.threads = 1
-    if args.email is None:
-        try:
-            args.email = os.environ['EMAIL']
-        except KeyError:
-            msg = 'No email was provided. Give one using --email or set ' \
-                  '$EMAIL as an environment variable in your shell.'
-            args.logger.error(msg)
-            end_program(args.logger, 78)
+    if args.outgroup is None:
+        if 'outgroup' in config.keys() and config['outgroup'] is not None:
+            args.outgroup = config['outgroup']
+        else:
+            args.outgroup = ''
 
     if args.evalue > 10:
         msg = 'Specified evalue "{}" is greater than 10.'
@@ -934,7 +921,7 @@ def generate_nexus(logger, runid, aligned, updated):
     return(nexus)
 
 
-def run_iqtree(logger, threads, iqtree, nexus, updated):
+def run_iqtree(logger, threads, iqtree, nexus, updated, outgroup):
     """
     Runs external iqtree command to generate phylogeny
 
@@ -949,6 +936,8 @@ def run_iqtree(logger, threads, iqtree, nexus, updated):
            '-m', 'MFP+MERGE',
            '-rcluster', '10',
            '-nt', str(threads)]
+    if outgroup:
+        cmd.extend(['-o', outgroup])
     if os.path.exists(out_tree) and not updated:
         logger.info('Treefile {} already found. Skipping iqtree.'
                     .format(out_tree))
@@ -1029,7 +1018,8 @@ def main():
                         updated_genome or updated_filt)
     nexus = generate_nexus(args.logger, args.runid, aligned, updated_query)
     treefile = run_iqtree(args.logger, args.threads, exes['iqtree'], nexus,
-                          updated_query or updated_genome or updated_filt)
+                          updated_query or updated_genome or updated_filt,
+                          args.outgroup)
     exit_successfully(args.logger, args.rundir, treefile)
 
 
