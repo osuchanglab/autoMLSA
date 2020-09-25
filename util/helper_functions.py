@@ -16,18 +16,20 @@ def end_program(logger, code):
     """
     Program message including success or failure of the program.
     """
-    if code == 1:
-        msg = 'Program was stopped at an intermediate stage.'
-        logger.info(msg)
-    elif code == 0:
-        msg = 'Program was a success! Congratulations!'
-        logger.info(msg)
-    else:
+    if code != 1:
         msg = 'Program exiting with code ({}) indicating failure.'
         logger.info(msg.format(code))
         msg = 'Check error messages to resolve the problem.'
         logger.info(msg)
-    exit(code)
+        exit(code)
+    elif code == 1:
+        msg = 'Program was stopped at an intermediate stage.'
+        logger.info(msg)
+        exit(code)
+    else:
+        msg = 'Program was a success! Congratulations!'
+        logger.info(msg)
+        exit(code)
 
 
 def check_if_fasta(fa):
@@ -91,9 +93,7 @@ def checkpoint_reached(logger, stage):
 
 def remove_update_tracker(updated):
     for update in updated:
-        p = os.path.join('.autoMLSA', 'updated', update)
-        if os.path.exists(p):
-            os.remove(p)
+        os.remove(os.path.join('.autoMLSA', 'updated', update))
 
 
 def main():

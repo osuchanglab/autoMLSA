@@ -39,11 +39,6 @@ def read_blast_results(logger, blastfiles, coverage, identity, updated):
               'qcovhsp': np.int,
               'stitle': 'string',
               'sseq': 'string'}
-    if any([os.path.exists(os.path.join('.autoMLSA', 'updated', x)) for x in
-            ['genome']]):
-        updated = True
-    if updated:
-        logger.debug('Reading all BLAST results as one or more was updated.')
     results_fn = os.path.join('.autoMLSA', 'blast_results.tsv')
     if os.path.exists(results_fn) and not updated:
         results = pd.read_csv(results_fn, dtype=dtypes, sep='\t')
@@ -59,7 +54,7 @@ def read_blast_results(logger, blastfiles, coverage, identity, updated):
     checkpath = os.path.join('.autoMLSA', 'checkpoint', 'read_blast_results')
     if not os.path.exists(checkpath):
         remove_update_tracker(['genome'])
-        open(os.path.join(checkpath), 'w').close()
+        open(os.path.join(checkpath, 'w')).close()
     return(results)
 
 
@@ -186,27 +181,16 @@ def print_blast_summary(logger, blastout, labels, nallowed, missing_check,
     return(blastout_keeps, updated)
 
 
-def print_fasta_files(logger, rundir, blastout, labels, updated):
-    '''
-    Generates unaligned fasta files from BLAST results
-    input  - filtered blast output
-    return - list of unaligned FASTA files
-    '''
-    fasdir = os.path.join(rundir, 'unaligned')
+def print_fasta_files(logger, blastout, labels, updated):
+    fastdir = 'unaligned'
     labels = [os.path.splitext(x)[0] for x in labels]
     unaligned = []
-    if any([os.path.exists(os.path.join('.autoMLSA', 'updated', x)) for x in
-            ['genome', 'filt']]):
-        updated = True
-    if updated:
-        logger.debug('Updating FASTA files as one or more was updated.')
-
-    if not os.path.exists(fasdir):
-        os.mkdir(fasdir)
+    if not os.path.exists(fastdir):
+        os.mkdir(fastdir)
     msg = 'Writing unaligned FASTA sequences.'
     logger.info(msg)
     for name, group in blastout.groupby('qseqid'):
-        fasta = os.path.join(fasdir, '{}.fas'.format(name))
+        fasta = os.path.join(fastdir, '{}.fas'.format(name))
         unaligned.append(fasta)
         if os.path.exists(fasta) and not updated:
             logger.debug('Unaligned file {} already found, skipping.'
@@ -225,7 +209,7 @@ def print_fasta_files(logger, rundir, blastout, labels, updated):
     checkpath = os.path.join('.autoMLSA', 'checkpoint', 'print_fasta_files')
     if not os.path.exists(checkpath):
         remove_update_tracker(['genome', 'filt'])
-        open(os.path.join(checkpath), 'w').close()
+        open(os.path.join(checkpath, 'w')).close()
 
     return(unaligned)
 
