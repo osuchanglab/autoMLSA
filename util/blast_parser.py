@@ -9,7 +9,7 @@ import os
 # import os.path
 # import logging
 from util.helper_functions import json_writer, checkpoint_reached,\
-    remove_update_tracker
+    checkpoint_tracker, remove_intermediates
 from collections import defaultdict
 from signal import signal, SIGPIPE, SIGINT, SIG_DFL
 signal(SIGPIPE, SIG_DFL)
@@ -18,7 +18,7 @@ signal(SIGINT, SIG_DFL)
 SINGLE_COPY_ESTIMATE = 0.90
 
 
-def read_blast_results(logger, blastfiles, coverage, identity, updated):
+def read_blast_results(logger, blastfiles, coverage, identity):
     """
     Parses set of BLAST results. Expects list of files.
 
@@ -40,7 +40,7 @@ def read_blast_results(logger, blastfiles, coverage, identity, updated):
               'stitle': 'string',
               'sseq': 'string'}
     results_fn = os.path.join('.autoMLSA', 'blast_results.tsv')
-    if os.path.exists(results_fn) and not updated:
+    if os.path.exists(results_fn):
         results = pd.read_csv(results_fn, dtype=dtypes, sep='\t')
     else:
         results = pd.DataFrame(columns=headers)
@@ -51,15 +51,12 @@ def read_blast_results(logger, blastfiles, coverage, identity, updated):
         results.query('(pident >= @identity) & (qcovhsp >= @coverage)',
                       inplace=True)
         results.to_csv(results_fn, sep='\t')
-    checkpath = os.path.join('.autoMLSA', 'checkpoint', 'read_blast_results')
-    if not os.path.exists(checkpath):
-        remove_update_tracker(['genome'])
-        open(os.path.join(checkpath, 'w')).close()
+    checkpoint_tracker('read_blast_results')
     return(results)
 
 
-def print_blast_summary(logger, blastout, labels, nallowed, missing_check,
-                        checkpoint):
+def print_blast_summary(logger, runid, blastout, labels, nallowed,
+                        missing_check, checkpoint):
     """
     Generates summary of BLAST results.
 
@@ -167,7 +164,8 @@ def print_blast_summary(logger, blastout, labels, nallowed, missing_check,
     updated = set(expected_filt) != set(keeps)
     if updated:
         logger.debug('Found new filtered sequences')
-        open(os.path.join('.autoMLSA', 'updated', 'filt'), 'w').close()
+        logger.debug('Removing downstream files, if present')
+        remove_intermediates(runid, ['genome'])
     if not updated:
         logger.debug('Found no new filtered sequences')
     json_writer(expected_filt_fn, keeps)
@@ -175,13 +173,12 @@ def print_blast_summary(logger, blastout, labels, nallowed, missing_check,
     if checkpoint:
         checkpoint_reached(logger, 'after BLAST result filtering')
 
-    open(os.path.join('.autoMLSA', 'checkpoint', 'print_blast_summary'),
-         'w').close()
+    checkpoint_tracker('print_blast_summary')
 
-    return(blastout_keeps, updated)
+    return(blastout_keeps)
 
 
-def print_fasta_files(logger, blastout, labels, updated):
+def print_fasta_files(logger, blastout, labels):
     fastdir = 'unaligned'
     labels = [os.path.splitext(x)[0] for x in labels]
     unaligned = []
@@ -192,7 +189,7 @@ def print_fasta_files(logger, blastout, labels, updated):
     for name, group in blastout.groupby('qseqid'):
         fasta = os.path.join(fastdir, '{}.fas'.format(name))
         unaligned.append(fasta)
-        if os.path.exists(fasta) and not updated:
+        if os.path.exists(fasta):
             logger.debug('Unaligned file {} already found, skipping.'
                          .format(fasta))
         else:
@@ -206,10 +203,7 @@ def print_fasta_files(logger, blastout, labels, updated):
                     fh.write('>{}\n'.format(labels[int(row.sseqid)]))
                     fh.write('{}\n'.format(row.sseq.replace('-', '')))
 
-    checkpath = os.path.join('.autoMLSA', 'checkpoint', 'print_fasta_files')
-    if not os.path.exists(checkpath):
-        remove_update_tracker(['genome', 'filt'])
-        open(os.path.join(checkpath, 'w')).close()
+    checkpoint_tracker('print_fasta_files')
 
     return(unaligned)
 

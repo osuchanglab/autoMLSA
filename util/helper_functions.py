@@ -4,6 +4,9 @@ import sys
 import os
 import subprocess
 import json
+import shutil
+import glob
+from typing import List
 from hashlib import blake2b
 from signal import signal, SIGPIPE, SIGINT, SIG_DFL
 signal(SIGPIPE, SIG_DFL)
@@ -12,24 +15,38 @@ signal(SIGINT, SIG_DFL)
 SUFFIXES = ['.nsq', '.nin', '.nhr', '.nto', '.not', '.ndb', '.ntf']
 
 
+def remove_intermediates(runid: str, intermediates: List[str]) -> None:
+    genome_tmpfiles = ['blast_results.tsv', 'keepsidx.json',
+                       'single_copy.json', 'blast_filtered.tsv',
+                       'expected_filt.json']
+    if 'genome' in intermediates:
+        for deldir in ['unaligned', 'aligned']:
+            if os.path.exists(deldir):
+                shutil.rmtree(deldir)
+        for fullname in [os.path.join('.autoMLSA', fn) for
+                         fn in genome_tmpfiles]:
+            if os.path.exists(fullname):
+                os.remove(fullname)
+    for delfile in glob.iglob(runid + '.nex*'):
+        os.remove(delfile)
+
+
 def end_program(logger, code):
     """
     Program message including success or failure of the program.
     """
-    if code != 1:
+    if code == 1:
+        msg = 'Program was stopped at an intermediate stage.'
+        logger.info(msg)
+    elif code == 0:
+        msg = 'Program was a success! Congratulations!'
+        logger.info(msg)
+    else:
         msg = 'Program exiting with code ({}) indicating failure.'
         logger.info(msg.format(code))
         msg = 'Check error messages to resolve the problem.'
         logger.info(msg)
-        exit(code)
-    elif code == 1:
-        msg = 'Program was stopped at an intermediate stage.'
-        logger.info(msg)
-        exit(code)
-    else:
-        msg = 'Program was a success! Congratulations!'
-        logger.info(msg)
-        exit(code)
+    exit(code)
 
 
 def check_if_fasta(fa):
@@ -91,9 +108,10 @@ def checkpoint_reached(logger, stage):
     end_program(logger, 1)
 
 
-def remove_update_tracker(updated):
-    for update in updated:
-        os.remove(os.path.join('.autoMLSA', 'updated', update))
+def checkpoint_tracker(fn_name):
+    checkpath = os.path.join('.autoMLSA', 'checkpoint', fn_name)
+    if not os.path.exists(checkpath):
+        open(os.path.join(checkpath), 'w').close()
 
 
 def main():

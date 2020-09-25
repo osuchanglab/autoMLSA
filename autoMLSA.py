@@ -14,7 +14,7 @@ from typing import List, Dict, Any
 from util.validate_requirements import validate_requirements
 from util.helper_functions import end_program, sanitize_path, generate_hash,\
     checkpoint_reached, make_blast_database, json_writer, check_if_fasta,\
-    checkpoint_tracker
+    checkpoint_tracker, remove_intermediates
 from util.blast_parser import read_blast_results, print_blast_summary,\
     print_fasta_files
 from multiprocessing import Pool
@@ -472,7 +472,8 @@ def get_labels(logger: logging.Logger, rundir: str, fastas: List[str]) ->\
 
 
 def convert_fasta(logger: logging.Logger, rundir: str, fastas: List[str],
-                  labels: List[str], makeblastdb: str) -> List[str]:
+                  labels: List[str], makeblastdb: str, runid: str) -> \
+        List[str]:
     """Converts fasta file with placeholder label names
 
     input - unformatted fasta files
@@ -529,6 +530,7 @@ def convert_fasta(logger: logging.Logger, rundir: str, fastas: List[str],
     updated: bool = set(expected_fastas) != set(new_fastas)
     if updated or deleted:
         logger.debug('Found new genome files')
+        remove_intermediates(runid, ['genome'])
     else:
         logger.debug('Found no new genome files')
     json_writer(expected_fastas_fn, new_fastas)
@@ -559,7 +561,7 @@ def check_hash(logger: logging.Logger, fasta: str, base: str, seqhash: str) ->\
     return deleted
 
 
-def get_queries(logger: logging.Logger, rundir: str, dups: bool,
+def get_queries(logger: logging.Logger, runid: str, rundir: str, dups: bool,
                 queries: List[str]) -> List[str]:
     """Converts query fasta file(s) into individual fastas for BLAST
 
@@ -694,6 +696,7 @@ def get_queries(logger: logging.Logger, rundir: str, dups: bool,
     updated: bool = set(expected_queries) != set(new_queries)
     if updated:
         logger.debug('Found new query sequences')
+        remove_intermediates(runid, ['query'])
     else:
         logger.debug('Found no new query sequences')
     json_writer(expected_queries_fn, new_queries)
@@ -937,11 +940,12 @@ def main() -> None:
     args.logger.info('Converting genome FASTA files for BLAST if necessary.')
     labels = get_labels(args.logger, args.rundir, args.fasta)
     newfastas = convert_fasta(
-        args.logger, args.rundir, args.fasta, labels, exes['makeblastdb'])
+        args.logger, args.rundir, args.fasta, labels, exes['makeblastdb'],
+        args.runid)
 
     args.logger.info('Extracting query FASTA files if necessary.')
     queries = get_queries(
-        args.logger, args.rundir, args.dups, args.query)
+        args.logger, args.runid, args.rundir, args.dups, args.query)
 
     # BLAST SECTION
     args.logger.info('Generating list of BLAST searches and outputs.')
@@ -953,8 +957,8 @@ def main() -> None:
     blastres = read_blast_results(
         args.logger, blastout, args.coverage, args.identity)
     blastfilt = print_blast_summary(
-        args.logger, blastres, labels, args.allow_missing, args.missing_check,
-        args.checkpoint == 'filtering')
+        args.logger, args.runid, blastres, labels, args.allow_missing,
+        args.missing_check, args.checkpoint == 'filtering')
     unaligned = print_fasta_files(args.logger, blastfilt, labels)
 
     # ALIGNMENT SECTION
