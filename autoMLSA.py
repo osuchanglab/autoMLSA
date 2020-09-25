@@ -441,9 +441,6 @@ def write_config(args):
     configdict.pop('rundir')
     configdict.pop('checkpoint')
     json_writer(args.configfile, configdict)
-    # with open(args.configfile, 'w') as cf:
-    #     json.dump(configdict, cf, indent=4)
-    #     cf.write('\n')
 
 
 def get_labels(logger, rundir, fastas):
@@ -463,7 +460,7 @@ def get_labels(logger, rundir, fastas):
                 logger.debug('Adding {} to list of labels'.format(base))
                 labels.append(base)
     else:
-        logger.debug('Generating '.format(base))
+        logger.debug('Generating list of labels in {}'.format(labelsf))
         labels = bases
     json_writer(labelsf, labels)
     return(labels)
@@ -743,7 +740,6 @@ def generate_blast_list(logger, rundir, exe, queries,
                 cmds.append(cmd)
 
     if cmds:
-        json_writer(os.path.join('.autoMLSA', 'new_blasts.json'))
         if checkpoint:
             blastfile = os.path.join(rundir, 'blastcmds.txt')
             with open(blastfile, 'w') as fh:
@@ -769,15 +765,21 @@ def generate_blast_list(logger, rundir, exe, queries,
 # ALIGNMENT SECTION ###########################################################
 
 
-def run_mafft(logger, threads, mafft, unaligned, updated, checkpoint):
+def run_mafft(logger, rundir, threads, mafft, unaligned, updated, checkpoint):
     """
     input  - unaligned fasta files per query
     return - list of aligned files per query
     """
     base_cmd = [mafft, '--thread', str(threads)]
-    aligneddir = 'aligned'
+    aligneddir = os.path.join(rundir, 'aligned')
     aligned = []
     cmdstrs = []
+    if any([os.path.exists(os.path.join('.autoMLSA', 'updated', x)) for x in
+            ['genome', 'filt']]):
+        updated = True
+    if updated:
+        logger.debug('Re-aligning sequences as one or more was updated.')
+
     logger.info('Aligning FASTA sequences, if necessary.')
     if not os.path.exists(aligneddir):
         os.mkdir(aligneddir)
@@ -796,7 +798,7 @@ def run_mafft(logger, threads, mafft, unaligned, updated, checkpoint):
                 logger.debug(msg.format(outname))
             cmd = base_cmd + [unalign]
             cmdstr = ' '.join([shlex.quote(x) for x in cmd]) + \
-                ' > {}'.format(shlex.quote(outname))
+                ' > {}\n'.format(shlex.quote(outname))
             logger.debug(cmdstr)
             if checkpoint == 'prealign':
                 cmdstrs.append(cmdstr)
@@ -806,7 +808,7 @@ def run_mafft(logger, threads, mafft, unaligned, updated, checkpoint):
                     subprocess.run(cmd, stdout=fh, stderr=logfh, text=True)
     if cmdstrs:
         with open('mafftcmds.txt', 'w') as fh:
-            fh.write('\n'.join(cmdstrs))
+            fh.write(''.join(cmdstrs))
         logger.info('MAFFT alignment commands written to mafftcmds.txt.')
         logger.info('Run these commands and resubmit to continue.')
         checkpoint_reached(logger, 'prior to MAFFT alignments')
@@ -816,7 +818,7 @@ def run_mafft(logger, threads, mafft, unaligned, updated, checkpoint):
     checkpath = os.path.join('.autoMLSA', 'checkpoint', 'run_mafft')
     if not os.path.exists(checkpath):
         remove_update_tracker(['genome', 'filt'])
-        open(os.path.join(checkpath, 'w')).close()
+        open(os.path.join(checkpath), 'w').close()
 
     return(aligned)
 
@@ -843,6 +845,12 @@ def generate_nexus(logger, runid, aligned, updated, checkpoint):
     #         charset part7 = acsA.all.aln: *;
     #         charset part8 = recA.all.aln: *;
     # end;
+    if any([os.path.exists(os.path.join('.autoMLSA', 'updated', x)) for x in
+            ['query']]):
+        updated = True
+    if updated:
+        logger.debug('Generating new nexus file as one or more query was '
+                     'updated.')
 
     nexus = '{}.nex'.format(runid)
     if os.path.exists(nexus) and not updated:
@@ -870,7 +878,7 @@ def generate_nexus(logger, runid, aligned, updated, checkpoint):
     checkpath = os.path.join('.autoMLSA', 'checkpoint', 'run_mafft')
     if not os.path.exists(checkpath):
         remove_update_tracker(['query'])
-        open(os.path.join(checkpath, 'w')).close()
+        open(os.path.join(checkpath), 'w').close()
     return(nexus)
 
 
@@ -882,6 +890,12 @@ def run_iqtree(logger, threads, iqtree, nexus, updated, outgroup):
     return - path to output file
     """
     out_tree = '{}.treefile'.format(nexus)
+    if any([os.path.exists(os.path.join('.autoMLSA', 'updated', x)) for x in
+            ['query', 'genome', 'filt']]):
+        updated = True
+    if updated:
+        logger.debug('Re-generating phylogeny as one or more seqs were'
+                     'updated.')
     cmd = [iqtree,
            '-p', nexus,
            '-B', '1000',
@@ -911,7 +925,7 @@ def run_iqtree(logger, threads, iqtree, nexus, updated, outgroup):
     checkpath = os.path.join('.autoMLSA', 'checkpoint', 'run_iqtree')
     if not os.path.exists(checkpath):
         remove_update_tracker(['query', 'genome', 'filt'])
-        open(os.path.join(checkpath, 'w')).close()
+        open(os.path.join(checkpath), 'w').close()
     return out_tree
 
 
@@ -973,11 +987,12 @@ def main():
         args.logger, blastres, labels, args.allow_missing, args.missing_check,
         args.checkpoint == 'filtering')
     unaligned = print_fasta_files(
-        args.logger, blastfilt, labels, updated_genome or updated_filt)
+        args.logger, args.rundir, blastfilt, labels,
+        updated_genome or updated_filt)
 
     # ALIGNMENT SECTION
     aligned = run_mafft(
-        args.logger, args.threads, exes['mafft'], unaligned,
+        args.logger, args.rundir, args.threads, exes['mafft'], unaligned,
         updated_genome or updated_filt, args.checkpoint)
 
     # PHYLOGENY SECTION
