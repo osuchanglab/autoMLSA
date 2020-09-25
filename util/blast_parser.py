@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 from __future__ import print_function
 import sys
 import numpy as np
@@ -8,6 +8,8 @@ import os
 # import csv
 # import os.path
 # import logging
+from util.helper_functions import json_writer, checkpoint_reached,\
+    remove_update_tracker
 from collections import defaultdict
 from signal import signal, SIGPIPE, SIGINT, SIG_DFL
 signal(SIGPIPE, SIG_DFL)
@@ -16,13 +18,7 @@ signal(SIGINT, SIG_DFL)
 SINGLE_COPY_ESTIMATE = 0.90
 
 
-def json_writer(fn, x):
-    with open(fn, 'w') as fh:
-        json.dump(x, fh, indent=4)
-        fh.write('\n')
-
-
-def read_blast_results(logger, blastfiles, coverage, identity):
+def read_blast_results(logger, blastfiles, coverage, identity, updated):
     """
     Parses set of BLAST results. Expects list of files.
 
@@ -30,8 +26,8 @@ def read_blast_results(logger, blastfiles, coverage, identity):
     return - pandas data frame of BLAST output
     """
     headers = ['qseqid', 'sseqid', 'saccver', 'pident', 'qlen', 'length',
-               'evalue', 'qcovhsp', 'stitle', 'sseq']
-    skip = 5
+               'bitscore', 'qcovhsp', 'stitle', 'sseq']
+    # skip = 5
     logger.info('Reading BLAST results.')
     dtypes = {'qseqid': 'category',
               'sseqid': 'category',
@@ -39,23 +35,31 @@ def read_blast_results(logger, blastfiles, coverage, identity):
               'pident': np.float,
               'qlen': np.int,
               'length': np.int,
-              'evalue': np.float,
+              'bitscore': np.float,
               'qcovhsp': np.int,
               'stitle': 'string',
               'sseq': 'string'}
-    results = pd.DataFrame(columns=headers)
-    for blastfile in blastfiles:
-        # with open(blastfile, 'r') as bf:
-        data = pd.read_table(blastfile, header=None, names=headers,
-                             skiprows=skip, dtype=dtypes, skipfooter=1,
-                             engine='python')
-        results = results.append(data, ignore_index=True)
-    results.query('(pident >= @identity) & (qcovhsp >= @coverage)',
-                  inplace=True)
+    results_fn = os.path.join('.autoMLSA', 'blast_results.tsv')
+    if os.path.exists(results_fn) and not updated:
+        results = pd.read_csv(results_fn, dtype=dtypes, sep='\t')
+    else:
+        results = pd.DataFrame(columns=headers)
+        for blastfile in blastfiles:
+            data = pd.read_csv(blastfile, header=None, names=headers,
+                               comment='#', dtype=dtypes, sep='\t')
+            results = results.append(data, ignore_index=True)
+        results.query('(pident >= @identity) & (qcovhsp >= @coverage)',
+                      inplace=True)
+        results.to_csv(results_fn, sep='\t')
+    checkpath = os.path.join('.autoMLSA', 'checkpoint', 'read_blast_results')
+    if not os.path.exists(checkpath):
+        remove_update_tracker(['genome'])
+        open(os.path.join(checkpath, 'w')).close()
     return(results)
 
 
-def print_blast_summary(logger, blastout, labels, nallowed, missing_check):
+def print_blast_summary(logger, blastout, labels, nallowed, missing_check,
+                        checkpoint):
     """
     Generates summary of BLAST results.
 
@@ -128,8 +132,11 @@ def print_blast_summary(logger, blastout, labels, nallowed, missing_check):
     keepsidx = [str(genome_map[x]) for x in keeps]
     json_writer(os.path.join('.autoMLSA', 'keepsidx.json'), keepsidx)
     blastout_keeps = blastout.query('sseqid in @keepsidx')\
-        .sort_values(['pident', 'qcovhsp'], ascending=False)\
+        .sort_values(['bitscore', 'qcovhsp'], ascending=False)\
         .drop_duplicates(['qseqid', 'sseqid']).sort_index()
+
+    blastout_keeps.to_csv(os.path.join('.autoMLSA', 'blast_filtered.tsv'),
+                          sep='\t')
 
     # Estimate single copy
     # Currently UNUSED #
@@ -160,9 +167,16 @@ def print_blast_summary(logger, blastout, labels, nallowed, missing_check):
     updated = set(expected_filt) != set(keeps)
     if updated:
         logger.debug('Found new filtered sequences')
+        open(os.path.join('.autoMLSA', 'updated', 'filt'), 'w').close()
     if not updated:
         logger.debug('Found no new filtered sequences')
     json_writer(expected_filt_fn, keeps)
+
+    if checkpoint:
+        checkpoint_reached(logger, 'after BLAST result filtering')
+
+    open(os.path.join('.autoMLSA', 'checkpoint', 'print_blast_summary'),
+         'w').close()
 
     return(blastout_keeps, updated)
 
@@ -192,13 +206,17 @@ def print_fasta_files(logger, blastout, labels, updated):
                     fh.write('>{}\n'.format(labels[int(row.sseqid)]))
                     fh.write('{}\n'.format(row.sseq.replace('-', '')))
 
+    checkpath = os.path.join('.autoMLSA', 'checkpoint', 'print_fasta_files')
+    if not os.path.exists(checkpath):
+        remove_update_tracker(['genome', 'filt'])
+        open(os.path.join(checkpath, 'w')).close()
+
     return(unaligned)
 
 
 def main():
     sys.stderr.write('This program is not intended to be run on its own.\n')
     sys.stderr.write('Provides functionality to autoMLSA.py.\n')
-    sys.stderr.write('Feel free to copy and modify for your own use.\n')
 
 
 if __name__ == '__main__':
