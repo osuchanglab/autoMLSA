@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 from __future__ import print_function
-import sys
+# import sys
 import numpy as np
 import pandas as pd
 import json
 import os
 # import csv
 # import os.path
-# import logging
+import logging
 from util.helper_functions import json_writer, checkpoint_reached,\
-    checkpoint_tracker, remove_intermediates
+    checkpoint_tracker, remove_intermediates, end_program
 from collections import defaultdict
 from signal import signal, SIGPIPE, SIGINT, SIG_DFL
 signal(SIGPIPE, SIG_DFL)
@@ -18,13 +18,14 @@ signal(SIGINT, SIG_DFL)
 SINGLE_COPY_ESTIMATE = 0.90
 
 
-def read_blast_results(logger, blastfiles, coverage, identity):
+def read_blast_results(blastfiles, coverage, identity):
     """
     Parses set of BLAST results. Expects list of files.
 
     input  - list of BLAST output filenames.
     return - pandas data frame of BLAST output
     """
+    logger = logging.getLogger(__name__)
     headers = ['qseqid', 'sseqid', 'saccver', 'pident', 'qlen', 'length',
                'bitscore', 'qcovhsp', 'stitle', 'sseq']
     # skip = 5
@@ -55,14 +56,15 @@ def read_blast_results(logger, blastfiles, coverage, identity):
     return(results)
 
 
-def print_blast_summary(logger, runid, blastout, labels, nallowed,
-                        missing_check, checkpoint):
+def print_blast_summary(runid, blastout, labels, nallowed, missing_check,
+                        checkpoint):
     """
     Generates summary of BLAST results.
 
     input  - pandas data frame with BLAST results
     return - pandas data frame with BLAST results to keep
     """
+    logger = logging.getLogger(__name__)
     logger.info('Summarizing and filtering BLAST hits.')
     summary = defaultdict(dict)
     missing_count = defaultdict(list)
@@ -153,7 +155,7 @@ def print_blast_summary(logger, runid, blastout, labels, nallowed,
                        'missing_by_genome.json files to review.')
         if not missing_check:
             logger.warning('Use --missing_check to continue.')
-            exit(1)
+            end_program(1)
     expected_filt_fn = os.path.join('.autoMLSA', 'expected_filt.json')
     if os.path.exists(expected_filt_fn):
         with open(expected_filt_fn, 'r') as eqf:
@@ -171,20 +173,21 @@ def print_blast_summary(logger, runid, blastout, labels, nallowed,
     json_writer(expected_filt_fn, keeps)
 
     if checkpoint:
-        checkpoint_reached(logger, 'after BLAST result filtering')
+        checkpoint_reached('after BLAST result filtering')
 
     checkpoint_tracker('print_blast_summary')
 
     return(blastout_keeps)
 
 
-def print_fasta_files(logger, blastout, labels):
+def print_fasta_files(blastout, labels):
+    logger = logging.getLogger(__name__)
     fastdir = 'unaligned'
     labels = [os.path.splitext(x)[0] for x in labels]
     unaligned = []
     if not os.path.exists(fastdir):
         os.mkdir(fastdir)
-    msg = 'Writing unaligned FASTA sequences.'
+    msg = 'Writing unaligned FASTA sequences, if necessary.'
     logger.info(msg)
     for name, group in blastout.groupby('qseqid'):
         fasta = os.path.join(fastdir, '{}.fas'.format(name))
@@ -206,12 +209,3 @@ def print_fasta_files(logger, blastout, labels):
     checkpoint_tracker('print_fasta_files')
 
     return(unaligned)
-
-
-def main():
-    sys.stderr.write('This program is not intended to be run on its own.\n')
-    sys.stderr.write('Provides functionality to autoMLSA.py.\n')
-
-
-if __name__ == '__main__':
-    main()

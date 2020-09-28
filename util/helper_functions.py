@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 from __future__ import print_function
-import sys
 import os
 import subprocess
 import json
 import shutil
 import glob
+import logging
 from typing import List
 from hashlib import blake2b
 from signal import signal, SIGPIPE, SIGINT, SIG_DFL
@@ -31,10 +31,11 @@ def remove_intermediates(runid: str, intermediates: List[str]) -> None:
         os.remove(delfile)
 
 
-def end_program(logger, code):
+def end_program(code):
     """
     Program message including success or failure of the program.
     """
+    logger = logging.getLogger(__name__)
     if code == 1:
         msg = 'Program was stopped at an intermediate stage.'
         logger.info(msg)
@@ -91,7 +92,7 @@ def generate_hash(s):
     return seqhash.hexdigest()
 
 
-def make_blast_database(logger, makeblastdb, fasta):
+def make_blast_database(makeblastdb, fasta):
     """Generates blast DB if necessary per fasta
 
     input  - fasta file
@@ -102,22 +103,14 @@ def make_blast_database(logger, makeblastdb, fasta):
         subprocess.run([makeblastdb, '-dbtype', 'nucl', '-in', fasta])
 
 
-def checkpoint_reached(logger, stage):
+def checkpoint_reached(stage):
+    logger = logging.getLogger(__name__)
     msg = 'Checkpoint reached {}. Stopping...'
     logger.info(msg.format(stage))
-    end_program(logger, 1)
+    end_program(1)
 
 
 def checkpoint_tracker(fn_name):
     checkpath = os.path.join('.autoMLSA', 'checkpoint', fn_name)
     if not os.path.exists(checkpath):
         open(os.path.join(checkpath), 'w').close()
-
-
-def main():
-    sys.stderr.write('This program is not intended to be run on its own.\n')
-    sys.stderr.write('Provides functionality to autoMLSA.py.\n')
-
-
-if __name__ == '__main__':
-    main()

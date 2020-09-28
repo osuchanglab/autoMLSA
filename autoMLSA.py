@@ -52,7 +52,7 @@ def get_fasta_files(x: str) -> str:
 
 
 def init_logger(debug: bool, quiet: bool, rundir: str, runid: str) -> \
-        logging.Logger:
+        None:
     """Sets up logging system to file and stderr
 
     input  - parsed arguments
@@ -61,7 +61,7 @@ def init_logger(debug: bool, quiet: bool, rundir: str, runid: str) -> \
 
     # initialize logger with program name
     # must set logging level to DEBUG to print DEBUG to file
-    logger = logging.getLogger(__name__)
+    logger = logging.getLogger()
     logger.setLevel(logging.DEBUG)
 
     formatter = logging.Formatter('%(name)s - %(asctime)s - '
@@ -83,8 +83,6 @@ def init_logger(debug: bool, quiet: bool, rundir: str, runid: str) -> \
 
     logger.addHandler(stderr_handler)
     logger.addHandler(file_handler)
-
-    return logger
 
 
 def run_argparse() -> argparse.Namespace:
@@ -155,20 +153,21 @@ def run_argparse() -> argparse.Namespace:
     args = parser.parse_args()
     args.rundir = config_rundir(args.runid)
     args.configfile = os.path.join(args.rundir, 'config.json')
-    args.logger = init_logger(args.debug, args.quiet, args.rundir, args.runid)
-    args.logger.debug('Started autoMLSA.py for run: {}'.format(args.runid))
-    args.logger.debug(pprint.pformat(vars(args)))
+    init_logger(args.debug, args.quiet, args.rundir, args.runid)
+    logger = logging.getLogger(__name__)
+    logger.debug('Started autoMLSA.py for run: {}'.format(args.runid))
+    logger.debug(pprint.pformat(vars(args)))
     return args
 
 # END ARGPARSE SECTION ########################################################
 # CONFIGURATION SECTION #######################################################
 
 
-def get_fasta_list(dirpath: str, logger: logging.Logger, rundir: str) -> \
-        List[str]:
+def get_fasta_list(dirpath: str, rundir: str) -> List[str]:
     """
     Finds FASTA files from directory
     """
+    logger = logging.getLogger(__name__)
     if not os.path.exists(dirpath):
         fastadir = os.path.join(rundir, 'fasta')
         if os.path.exists(fastadir):
@@ -220,12 +219,13 @@ def config_rundir(runid: str) -> str:
     return rundir
 
 
-def read_config(logger: logging.Logger, configfile: str) -> Dict[str, Any]:
+def read_config(configfile: str) -> Dict[str, Any]:
     """Finds settings in config file (json format). path/rundir/config.json
 
     input  - rundir path, logger
     return - dict with configuration settings
     """
+    logger = logging.getLogger(__name__)
 
     logger.info('Reading from configuration file: {}'.format(configfile))
 
@@ -248,7 +248,8 @@ def validate_arguments(args: argparse.Namespace, config: dict,
     # p = tblastn
     # t = 1
 
-    args.logger.debug('Validating & reconciling arguments.')
+    logger = logging.getLogger(__name__)
+    logger.debug('Validating & reconciling arguments.')
     error: bool = False
 
     # Reconcile config file and command line options
@@ -285,10 +286,10 @@ def validate_arguments(args: argparse.Namespace, config: dict,
                 args.program = config['program']
             else:
                 msg = 'Program specified in config file "{}" is not valid.'
-                args.logger.error(msg.format(config['program']))
+                logger.error(msg.format(config['program']))
                 msg = 'Please give either "tblastn" or "blastn" and try again.'
-                args.logger.error(msg)
-                end_program(args.logger, 78)
+                logger.error(msg)
+                end_program(78)
         else:
             args.program = 'tblastn'
     if args.threads is None:
@@ -314,16 +315,16 @@ def validate_arguments(args: argparse.Namespace, config: dict,
 
     if args.evalue > 10:
         msg = 'Specified evalue "{}" is greater than 10.'
-        args.logger.error(msg.format(args.evalue))
+        logger.error(msg.format(args.evalue))
         msg = 'Please specify an evalue < 10 and try again.'
-        args.logger.error(msg)
-        end_program(args.logger, 78)
+        logger.error(msg)
+        end_program(78)
     if args.coverage not in range(0, 100):
         msg = 'Coverage value is not between 0 and 100.'
-        args.logger.error(msg.format(args.coverage))
+        logger.error(msg.format(args.coverage))
         msg = 'Please specify a coverage between 0 and 100 and try again.'
-        args.logger.error(msg)
-        end_program(args.logger, 78)
+        logger.error(msg)
+        end_program(78)
 
     cmd = 'lscpu | grep -G "^CPU(s):" | grep -o -E "[0-9]+"'
     try:
@@ -333,18 +334,18 @@ def validate_arguments(args: argparse.Namespace, config: dict,
                                              ).decode().strip()
     except subprocess.CalledProcessError:
         msg = 'Unable to check number of available threads.'
-        args.logger.warning(msg)
+        logger.warning(msg)
         msg = 'Make sure the number of specified threads is correct.'
-        args.logger.warning(msg)
+        logger.warning(msg)
     else:
-        args.logger.debug('Max threads found {}'.format(maxthreads))
+        logger.debug('Max threads found {}'.format(maxthreads))
         if args.threads > int(maxthreads):
             msg = 'Threads specified {} greater than number of available ' \
                   'threads {}'
-            args.logger.error(msg.format(args.threads, maxthreads))
+            logger.error(msg.format(args.threads, maxthreads))
             msg = 'Specify threads less than or equal to {} and try again.'
-            args.logger.error(msg.format(maxthreads))
-            end_program(args.logger, 78)
+            logger.error(msg.format(maxthreads))
+            end_program(78)
 
     # Set up lists for files, dirs, and queries
     if args.files is None:
@@ -370,15 +371,15 @@ def validate_arguments(args: argparse.Namespace, config: dict,
     for query in args.query.copy():
         if not check_if_fasta(query):
             msg = 'Specified query file {} does not appear to be FASTA file.'
-            args.logger.error(msg.format(query))
-            args.logger.debug('Removing {} from query list'.format(query))
+            logger.error(msg.format(query))
+            logger.debug('Removing {} from query list'.format(query))
             args.query.remove(query)
             error = True
 
     args.fasta = []
     # Combine lists
     for fastadir in args.dir:
-        fastas = get_fasta_list(fastadir, args.logger, args.rundir)
+        fastas = get_fasta_list(fastadir, args.rundir)
         args.fasta.extend(fastas)
     args.fasta.extend(args.files)
 
@@ -392,16 +393,16 @@ def validate_arguments(args: argparse.Namespace, config: dict,
         base = os.path.basename(fasta)
         if base in seen:
             msg = 'Same genome name found in two locations'
-            args.logger.error(msg)
+            logger.error(msg)
             msg = '++++++++++++Offending files++++++++++++'
-            args.logger.error(msg)
-            args.logger.error('{}'.format(fasta))
-            args.logger.error('{}'.format(seen[base]))
+            logger.error(msg)
+            logger.error('{}'.format(fasta))
+            logger.error('{}'.format(seen[base]))
             msg = '+++++++++++++++++++++++++++++++++++++++'
-            args.logger.error(msg)
+            logger.error(msg)
             msg = 'Remove or rename one of these to continue.'
-            args.logger.error(msg)
-            end_program(args.logger, 65)
+            logger.error(msg)
+            end_program(65)
         else:
             seen[base] = fasta
 
@@ -410,18 +411,18 @@ def validate_arguments(args: argparse.Namespace, config: dict,
 
     if not args.fasta:
         msg = 'No valid FASTA files provided as --dir or --files.'
-        args.logger.error(msg)
+        logger.error(msg)
         error = True
 
-    args.logger.debug('Validated arguments:')
-    args.logger.debug(pprint.pformat(vars(args)))
+    logger.debug('Validated arguments:')
+    logger.debug(pprint.pformat(vars(args)))
 
     write_config(args)
     if error:
-        end_program(args.logger, -1)
+        end_program(-1)
 
     if checkpoint:
-        checkpoint_reached(args.logger, 'at validate arguments')
+        checkpoint_reached('at validate arguments')
 
     return args
 
@@ -432,11 +433,11 @@ def write_config(args: argparse.Namespace) -> None:
     input  - valiated & compiled arguments
     return - NULL
     """
-    args.logger.debug('Writing config file {}'.format(args.configfile))
+    logger = logging.getLogger(__name__)
+    logger.debug('Writing config file {}'.format(args.configfile))
     configdict = vars(args).copy()
     configdict.pop('config')
     configdict.pop('debug')
-    configdict.pop('logger')
     configdict.pop('quiet')
     configdict.pop('configfile')
     configdict.pop('rundir')
@@ -444,14 +445,14 @@ def write_config(args: argparse.Namespace) -> None:
     json_writer(args.configfile, configdict)
 
 
-def get_labels(logger: logging.Logger, rundir: str, fastas: List[str]) ->\
-        List[str]:
+def get_labels(rundir: str, fastas: List[str]) -> List[str]:
     """Determines the arbitrary labels per fasta file
     labels are index of list
 
     input - fasta files
     return - label list
     """
+    logger = logging.getLogger(__name__)
     labelsf: str = os.path.join(rundir, '.autoMLSA', 'labels.json')
     bases: List[str] = [os.path.basename(x) for x in fastas]
     if os.path.exists(labelsf):
@@ -471,15 +472,15 @@ def get_labels(logger: logging.Logger, rundir: str, fastas: List[str]) ->\
 # FORMATTING SECTION ##########################################################
 
 
-def convert_fasta(logger: logging.Logger, rundir: str, fastas: List[str],
-                  labels: List[str], makeblastdb: str, runid: str) -> \
-        List[str]:
+def convert_fasta(rundir: str, fastas: List[str], labels: List[str],
+                  makeblastdb: str, runid: str) -> List[str]:
     """Converts fasta file with placeholder label names
 
     input - unformatted fasta files
     return - Set of formatted fasta files
     also generates BLAST dbs per fasta
     """
+    logger = logging.getLogger(__name__)
     fastadir: str = os.path.join(rundir, 'fasta')
     new_fastas: List[str] = []
     renamef: str = os.path.join(rundir, '.autoMLSA', 'rename.json')
@@ -502,7 +503,7 @@ def convert_fasta(logger: logging.Logger, rundir: str, fastas: List[str],
                 rename_info[base] = {}
                 rename_info[base]['index'] = label
         else:
-            if check_hash(logger, fasta, base, rename_info[base]['hash']):
+            if check_hash(fasta, base, rename_info[base]['hash']):
                 deleted = True
         new_fastas.append(labelfastaf)
         if not os.path.exists(labelfastaf):
@@ -516,7 +517,7 @@ def convert_fasta(logger: logging.Logger, rundir: str, fastas: List[str],
                     seq += str(rec.seq)
             seqhash = generate_hash(seq)
             rename_info[base]['hash'] = seqhash
-        make_blast_database(logger, makeblastdb, labelfastaf)
+        make_blast_database(makeblastdb, labelfastaf)
     json_writer(renamef, rename_info)
 
     expected_fastas_fn: str = os.path.join(rundir, '.autoMLSA',
@@ -538,12 +539,12 @@ def convert_fasta(logger: logging.Logger, rundir: str, fastas: List[str],
     return new_fastas
 
 
-def check_hash(logger: logging.Logger, fasta: str, base: str, seqhash: str) ->\
-        bool:
+def check_hash(fasta: str, base: str, seqhash: str) -> bool:
     """
     Checks hash, deletes files related to genome if necessary
     return - value if something is deleted
     """
+    logger = logging.getLogger(__name__)
     deleted: bool = False
     with open(fasta, 'r') as ff:
         newseqhash = generate_hash(
@@ -561,13 +562,14 @@ def check_hash(logger: logging.Logger, fasta: str, base: str, seqhash: str) ->\
     return deleted
 
 
-def get_queries(logger: logging.Logger, runid: str, rundir: str, dups: bool,
-                queries: List[str]) -> List[str]:
+def get_queries(runid: str, rundir: str, dups: bool, queries: List[str]) -> \
+        List[str]:
     """Converts query fasta file(s) into individual fastas for BLAST
 
     input - FASTA files with queries as individual entries
     return - individual fasta files
     """
+    logger = logging.getLogger(__name__)
     querydir: str = os.path.join(rundir, 'queries')
     backups: str = os.path.join(rundir, '.autoMLSA', 'backups')
 
@@ -593,7 +595,7 @@ def get_queries(logger: logging.Logger, runid: str, rundir: str, dups: bool,
                 msg = 'Unable to continue without the queries. Either replace'\
                     ' the file or start again from a new analysis.'
                 logger.critical(msg)
-                end_program(logger, 66)
+                end_program(66)
         with open(query_file, 'r') as qf:
             for rec in SeqIO.parse(qf, 'fasta'):
                 safeid: str = sanitize_path(rec.id)
@@ -629,7 +631,7 @@ def get_queries(logger: logging.Logger, runid: str, rundir: str, dups: bool,
                     msg = 'Check your sequences to make sure they aren\'t '\
                         'misnamed, fix the problem, and try again.'
                     logger.error(msg)
-                    end_program(logger, 65)
+                    end_program(65)
                 else:
                     # Expected outcome; new id, new seq
                     hashes[seqhash] = safeid
@@ -659,7 +661,7 @@ def get_queries(logger: logging.Logger, runid: str, rundir: str, dups: bool,
                     msg = 'Alternatively, if this is intended, use the --dups'\
                         ' flag to include both copies.'
                     logger.error(msg)
-                    end_program(logger, 65)
+                    end_program(65)
                 else:
                     if safeid in seen and dups:
                         msg = 'Keeping additional query {} with duplicate ID '\
@@ -704,7 +706,7 @@ def get_queries(logger: logging.Logger, runid: str, rundir: str, dups: bool,
     if not new_queries:
         msg = 'No query sequences found. Check your query file and try again.'
         logger.error(msg)
-        end_program(logger, -1)
+        end_program(-1)
 
     open(os.path.join('.autoMLSA', 'checkpoint', 'get_queries'), 'w').close()
 
@@ -714,15 +716,16 @@ def get_queries(logger: logging.Logger, runid: str, rundir: str, dups: bool,
 # BLAST SECTION ###############################################################
 
 
-def generate_blast_list(logger: logging.Logger, rundir: str, exe: str,
-                        queries: List[str], targets: List[str], evalue: float,
-                        threads: int, checkpoint: bool) -> List[str]:
+def generate_blast_list(rundir: str, exe: str, queries: List[str], targets:
+                        List[str], evalue: float, threads: int,
+                        checkpoint: bool) -> List[str]:
     """
     Generates list of BLAST searches that need to be run
 
     input  - blast type, exes, queries, and targets
     output - list of blast output names
     """
+    logger = logging.getLogger(__name__)
     cmds: List[List[str]] = []
     # blastout = defaultdict(list)
     blastout: List[str] = []
@@ -754,7 +757,7 @@ def generate_blast_list(logger: logging.Logger, rundir: str, exe: str,
                     fh.write(' '.join([shlex.quote(x) for x in cmd]) + '\n')
             msg = 'BLAST commands written to {}. Exiting.'
             logger.info(msg.format(blastfile))
-            checkpoint_reached(logger, 'prior to BLAST searches')
+            checkpoint_reached('prior to BLAST searches')
         else:
             msg = 'Running {} BLAST searches using {} CPUs.'
             logger.info(msg.format(len(cmds), threads))
@@ -772,12 +775,13 @@ def generate_blast_list(logger: logging.Logger, rundir: str, exe: str,
 # ALIGNMENT SECTION ###########################################################
 
 
-def run_mafft(logger: logging.Logger, threads: int, mafft: str,
-              unaligned: List[str], checkpoint: bool) -> List[str]:
+def run_mafft(threads: int, mafft: str, unaligned: List[str],
+              checkpoint: bool) -> List[str]:
     """
     input  - unaligned fasta files per query
     return - list of aligned files per query
     """
+    logger = logging.getLogger(__name__)
     base_cmd: List[str] = [mafft, '--thread', str(threads)]
     aligneddir: str = 'aligned'
     aligned: List[str] = []
@@ -810,9 +814,9 @@ def run_mafft(logger: logging.Logger, threads: int, mafft: str,
             fh.write('\n'.join(cmdstrs))
         logger.info('MAFFT alignment commands written to mafftcmds.txt.')
         logger.info('Run these commands and resubmit to continue.')
-        checkpoint_reached(logger, 'prior to MAFFT alignments')
+        checkpoint_reached('prior to MAFFT alignments')
     elif checkpoint == 'postalign':
-        checkpoint_reached(logger, 'after MAFFT alignments')
+        checkpoint_reached('after MAFFT alignments')
 
     checkpoint_tracker('run_mafft')
 
@@ -822,14 +826,14 @@ def run_mafft(logger: logging.Logger, threads: int, mafft: str,
 # PHYLOGENY SECTION ###########################################################
 
 
-def generate_nexus(logger: logging.Logger, runid: str, aligned: List[str],
-                   checkpoint: bool) -> str:
+def generate_nexus(runid: str, aligned: List[str], checkpoint: bool) -> str:
     """
     Generate nexus file containing partitions per aligned gene
 
     input  - list of aligned FASTA filenames
     return - path to nexus file
     """
+    logger = logging.getLogger(__name__)
     # Example nexus file
     # #nexus
     # begin sets;
@@ -856,21 +860,20 @@ def generate_nexus(logger: logging.Logger, runid: str, aligned: List[str],
                 nex.write('\tcharset {} = {}: *;\n'.format(base, fn))
             nex.write('end;\n')
     if checkpoint:
-        checkpoint_reached(logger,
-                           'after generating nexus file {}'.format(nexus))
+        checkpoint_reached('after generating nexus file {}'.format(nexus))
 
     checkpoint_tracker('generate_nexus')
     return(nexus)
 
 
-def run_iqtree(logger: logging.Logger, threads: int, iqtree: str, nexus: str,
-               outgroup: str) -> str:
+def run_iqtree(threads: int, iqtree: str, nexus: str, outgroup: str) -> str:
     """
     Runs external iqtree command to generate phylogeny
 
     input  - nexus file
     return - path to output file
     """
+    logger = logging.getLogger(__name__)
     out_tree: str = '{}.treefile'.format(nexus)
     cmd: List[str] = [
         iqtree,
@@ -894,24 +897,24 @@ def run_iqtree(logger: logging.Logger, threads: int, iqtree: str, nexus: str,
             msg = 'Check the log files for error messages to see if they can '\
                 'be resolved.'
             logger.critical(msg)
-            end_program(logger, 73)
+            end_program(73)
 
     checkpoint_tracker('run_iqtree')
 
     return out_tree
 
 
-def exit_successfully(logger: logging.Logger, rundir: str, treefile: str) ->\
-        None:
+def exit_successfully(rundir: str, treefile: str) -> None:
     """Temporary command
 
     input  - rundir and treefile to print to log
     return - None
     """
+    logger = logging.getLogger(__name__)
 
     msg = 'Your treefile is ready: {}/{}'
     logger.info(msg.format(rundir, treefile))
-    end_program(logger, 0)
+    end_program(0)
 
 # END PHYLOGENY SECTION #######################################################
 
@@ -919,58 +922,54 @@ def exit_successfully(logger: logging.Logger, rundir: str, treefile: str) ->\
 def main() -> None:
     # ARGPARSE SECTION
     args = run_argparse()
-    args.logger.info('Welcome to autoMLSA.py version {}'.format(__version__))
+    logger = logging.getLogger(__name__)
+    logger.info('Welcome to autoMLSA.py version {}'.format(__version__))
     time.sleep(1)
 
     # CONFIGURATION SECTION
-    exes = validate_requirements(args.logger)
+    exes = validate_requirements()
 
-    args.logger.info('Reconciling configuration settings.')
+    logger.info('Reconciling configuration settings.')
     config = {}
     if os.path.exists(args.configfile):
-        config = read_config(args.logger, args.configfile)
+        config = read_config(args.configfile)
         if args.config is not None:
             msg = 'Config file specified {} is ignored as one is found in {}.'
-            args.logger.warning(msg.format(args.config, args.rundir))
+            logger.warning(msg.format(args.config, args.rundir))
     elif args.config:
-        config = read_config(args.logger, args.config)
+        config = read_config(args.config)
     args = validate_arguments(args, config, args.checkpoint == 'validate')
 
     # FORMATTING SECTION
-    args.logger.info('Converting genome FASTA files for BLAST if necessary.')
-    labels = get_labels(args.logger, args.rundir, args.fasta)
-    newfastas = convert_fasta(
-        args.logger, args.rundir, args.fasta, labels, exes['makeblastdb'],
-        args.runid)
+    logger.info('Converting genome FASTA files for BLAST if necessary.')
+    labels = get_labels(args.rundir, args.fasta)
+    newfastas = convert_fasta(args.rundir, args.fasta, labels,
+                              exes['makeblastdb'], args.runid)
 
-    args.logger.info('Extracting query FASTA files if necessary.')
-    queries = get_queries(
-        args.logger, args.runid, args.rundir, args.dups, args.query)
+    logger.info('Extracting query FASTA files if necessary.')
+    queries = get_queries(args.runid, args.rundir, args.dups, args.query)
 
     # BLAST SECTION
-    args.logger.info('Generating list of BLAST searches and outputs.')
+    logger.info('Generating list of BLAST searches and outputs.')
     blastout = generate_blast_list(
-        args.logger, args.rundir, exes[args.program], queries, newfastas,
-        args.evalue, args.threads, args.checkpoint == 'preblast')
+        args.rundir, exes[args.program], queries, newfastas, args.evalue,
+        args.threads, args.checkpoint == 'preblast')
 
     # BLAST output results, summary, and files
-    blastres = read_blast_results(
-        args.logger, blastout, args.coverage, args.identity)
+    blastres = read_blast_results(blastout, args.coverage, args.identity)
     blastfilt = print_blast_summary(
-        args.logger, args.runid, blastres, labels, args.allow_missing,
+        args.runid, blastres, labels, args.allow_missing,
         args.missing_check, args.checkpoint == 'filtering')
-    unaligned = print_fasta_files(args.logger, blastfilt, labels)
+    unaligned = print_fasta_files(blastfilt, labels)
 
     # ALIGNMENT SECTION
     aligned = run_mafft(
-        args.logger, args.threads, exes['mafft'], unaligned, args.checkpoint)
+        args.threads, exes['mafft'], unaligned, args.checkpoint)
 
     # PHYLOGENY SECTION
-    nexus = generate_nexus(
-        args.logger, args.runid, aligned, args.checkpoint == 'nexus')
-    treefile = run_iqtree(
-        args.logger, args.threads, exes['iqtree'], nexus, args.outgroup)
-    exit_successfully(args.logger, args.rundir, treefile)
+    nexus = generate_nexus(args.runid, aligned, args.checkpoint == 'nexus')
+    treefile = run_iqtree(args.threads, exes['iqtree'], nexus, args.outgroup)
+    exit_successfully(args.rundir, treefile)
 
 
 if __name__ == '__main__':
