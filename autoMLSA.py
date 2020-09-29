@@ -782,7 +782,8 @@ def run_mafft(threads: int, mafft: str, unaligned: List[str],
     return - list of aligned files per query
     """
     logger = logging.getLogger(__name__)
-    base_cmd: List[str] = [mafft, '--thread', str(threads)]
+    base_cmd: List[str] = [mafft, '--localpair', '--maxiterate', str(1000),
+                           '--thread', str(threads)]
     aligneddir: str = 'aligned'
     aligned: List[str] = []
     cmdstrs: List[str] = []
