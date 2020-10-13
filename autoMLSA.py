@@ -538,8 +538,12 @@ def get_queries(runid: str, rundir: str, dups: bool, queries: List[str]) -> \
 
     updated: bool = set(expected_queries) != set(new_queries)
     if updated:
-        logger.debug('Found new query sequences')
-        remove_intermediates(runid, ['query'])
+        if all(query in new_queries for query in expected_queries):
+            logger.debug('Found new query sequences')
+            remove_intermediates(runid, ['query'])
+        else:
+            logger.debug('Query sequences have been removed')
+            remove_intermediates(runid, ['query', 'genome'])
     else:
         logger.debug('Found no new query sequences')
     json_writer(expected_queries_fn, new_queries)
