@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 from __future__ import print_function
 import os
-import subprocess
 import json
 import shutil
 import glob
@@ -90,17 +89,6 @@ def generate_hash(s):
     """
     seqhash = blake2b(s.encode(), digest_size=16)
     return seqhash.hexdigest()
-
-
-def make_blast_database(makeblastdb, fasta):
-    """Generates blast DB if necessary per fasta
-
-    input  - fasta file
-    return - null
-    """
-    exist = [os.path.exists(fasta + x) for x in SUFFIXES]
-    if not all(exist):
-        subprocess.run([makeblastdb, '-dbtype', 'nucl', '-in', fasta])
 
 
 def checkpoint_reached(stage):

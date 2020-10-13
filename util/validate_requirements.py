@@ -10,7 +10,7 @@ import inspect
 from pathlib import Path as p
 from hashlib import md5
 from typing import Dict
-from util.helper_functions import end_program
+from .helper_functions import end_program
 from signal import signal, SIGPIPE, SIGINT, SIG_DFL
 signal(SIGPIPE, SIG_DFL)
 signal(SIGINT, SIG_DFL)
