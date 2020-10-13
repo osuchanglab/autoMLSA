@@ -176,21 +176,21 @@ def download_file(out_file: str, url: str, program: str) -> None:
         logger.info('{} already downloaded.'.format(program))
 
 
-def init_logger(debug: bool = False) -> None:
-    logger = logging.getLogger()
-    if debug:
-        logger.setLevel(logging.DEBUG)
-    else:
-        logger.setLevel(logging.INFO)
-
-    # formatter = logging.Formatter('%(name)s - %(asctime)s - '
-    #                               '%(levelname)s - %(message)s',
-    #                               datefmt='%Y-%m-%d %H:%M:%S')
-    formatter = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
-    stderr_handler = logging.StreamHandler()
-    stderr_handler.setFormatter(formatter)
-
-    logger.addHandler(stderr_handler)
+# def init_logger(debug: bool = False) -> None:
+#     logger = logging.getLogger()
+#     if debug:
+#         logger.setLevel(logging.DEBUG)
+#     else:
+#         logger.setLevel(logging.INFO)
+#
+#     # formatter = logging.Formatter('%(name)s - %(asctime)s - '
+#     #                               '%(levelname)s - %(message)s',
+#     #                               datefmt='%Y-%m-%d %H:%M:%S')
+#     formatter = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
+#     stderr_handler = logging.StreamHandler()
+#     stderr_handler.setFormatter(formatter)
+#
+#     logger.addHandler(stderr_handler)
 
 
 def install_blast() -> None:
@@ -284,6 +284,11 @@ def install_mafft() -> None:
         if not os.path.exists(mafft):
             logger.info('Unpacking MAFFT zip file.')
             shutil.unpack_archive(out_file, externalpath, 'zip')
+        logger.debug('Changing permissions.')
+        for root, folders, files in \
+                os.walk(os.path.join(externalpath, 'mafft-mac')):
+            for exe in files:
+                os.chmod(os.path.join(root, exe), 0o755)
     logger.info('Checking mafft version.')
     try:
         mafft_ver: str = subprocess.check_output([mafft, '--version'],
@@ -344,6 +349,7 @@ def install_iqtree() -> None:
         if not os.path.exists(iqtree):
             logger.info('Unpacking iqtree zip file.')
             shutil.unpack_archive(out_file, externalpath, 'zip')
+        os.chmod(iqtree, 0o755)
     elif platform.system() == 'Windows':
         iqtree = os.path.join(externalpath,
                               'iqtree-{}-Windows'.format(IQTREEVER),
