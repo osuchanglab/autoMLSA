@@ -5,7 +5,7 @@ import argparse
 # import csv
 import os.path
 import logging
-import ete3
+import ete3  # type: ignore
 # from collections import defaultdict
 from signal import signal, SIGPIPE, SIGINT, SIG_DFL
 signal(SIGPIPE, SIG_DFL)

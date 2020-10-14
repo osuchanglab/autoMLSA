@@ -102,3 +102,16 @@ def checkpoint_tracker(fn_name):
     checkpath = os.path.join('.autoMLSA', 'checkpoint', fn_name)
     if not os.path.exists(checkpath):
         open(os.path.join(checkpath), 'w').close()
+
+
+def exit_successfully(rundir: str, treefile: str) -> None:
+    """Temporary command
+
+    input  - rundir and treefile to print to log
+    return - None
+    """
+    logger = logging.getLogger(__name__)
+
+    msg = 'Your treefile is ready: {}/{}'
+    logger.info(msg.format(rundir, treefile))
+    end_program(0)

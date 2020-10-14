@@ -21,16 +21,24 @@ IQTREEVER = '2.1.1'
 
 
 def get_external_path() -> str:
-    filename = inspect.getframeinfo(inspect.currentframe()).filename
-    scriptpath = os.path.dirname(os.path.abspath(filename))
-    externalpath = os.path.join(os.path.dirname(scriptpath), 'external')
+    """
+    Gets path to external directory
+    input  - None
+    return - Path to external dir
+    """
+
+    filename: str = inspect.getframeinfo(
+        inspect.currentframe()).filename  # type: ignore
+    scriptpath: str = os.path.dirname(os.path.abspath(filename))
+    externalpath: str = os.path.join(os.path.dirname(scriptpath), 'external')
     if not os.path.exists(externalpath):
         os.mkdir(externalpath)
     return externalpath
 
 
 def validate_requirements() -> Dict[str, str]:
-    """Identifies installed software and sets paths for running
+    """
+    Identifies installed software and sets paths for running
 
     input  - logger
     output - exes dict with paths to executables
@@ -81,8 +89,8 @@ def validate_requirements() -> Dict[str, str]:
 
     logger.debug('Checking tblastn: {}'.format(tblastn))
     try:
-        tblastn_ver: str = subprocess.check_output([tblastn, '-version'],
-                                                   stderr=subprocess.STDOUT)
+        tblastn_ver: bytes = subprocess.check_output([tblastn, '-version'],
+                                                     stderr=subprocess.STDOUT)
     except FileNotFoundError:
         msg = 'Unable to find tblastn executable in path or in provided dir ' \
               '({})'
@@ -95,8 +103,8 @@ def validate_requirements() -> Dict[str, str]:
 
     logger.debug('Checking blastn: {}'.format(blastn))
     try:
-        blastn_ver: str = subprocess.check_output([blastn, '-version'],
-                                                  stderr=subprocess.STDOUT)
+        blastn_ver: bytes = subprocess.check_output([blastn, '-version'],
+                                                    stderr=subprocess.STDOUT)
     except FileNotFoundError:
         msg = 'Unable to find blastn executable in path or in provided dir ' \
               '({})'
@@ -109,7 +117,7 @@ def validate_requirements() -> Dict[str, str]:
 
     logger.debug('Checking makeblastdb: {}'.format(makeblastdb))
     try:
-        makeblastdb_ver: str = subprocess.check_output(
+        makeblastdb_ver: bytes = subprocess.check_output(
             [makeblastdb, '-version'],
             stderr=subprocess.STDOUT)
     except FileNotFoundError:
@@ -127,8 +135,8 @@ def validate_requirements() -> Dict[str, str]:
     # MAFFT testing
     logger.debug('Checking mafft: {}'.format(mafft))
     try:
-        mafft_ver: str = subprocess.check_output([mafft, '--version'],
-                                                 stderr=subprocess.STDOUT)
+        mafft_ver: bytes = subprocess.check_output([mafft, '--version'],
+                                                   stderr=subprocess.STDOUT)
     except FileNotFoundError:
         msg = 'Unable to find mafft executable in path or in provided dir ' \
               '({})'
@@ -143,8 +151,8 @@ def validate_requirements() -> Dict[str, str]:
     # iqtree testing
     logger.debug('Checking iqtree: {}'.format(iqtree))
     try:
-        iqtree_ver: str = subprocess.check_output([iqtree, '--version'],
-                                                  stderr=subprocess.STDOUT)
+        iqtree_ver: bytes = subprocess.check_output([iqtree, '--version'],
+                                                    stderr=subprocess.STDOUT)
     except FileNotFoundError:
         msg = 'Unable to find iqtree2 executable in path or in provided dir ' \
               '({})'
@@ -166,6 +174,9 @@ def validate_requirements() -> Dict[str, str]:
 
 
 def download_file(out_file: str, url: str, program: str) -> None:
+    """
+    Downloads given file from url
+    """
     logger = logging.getLogger(__name__)
     logger.info('Downloading {} from {}.'.format(program, url))
     if not os.path.exists(out_file) or os.path.getsize(out_file) == 0:
@@ -176,24 +187,10 @@ def download_file(out_file: str, url: str, program: str) -> None:
         logger.info('{} already downloaded.'.format(program))
 
 
-# def init_logger(debug: bool = False) -> None:
-#     logger = logging.getLogger()
-#     if debug:
-#         logger.setLevel(logging.DEBUG)
-#     else:
-#         logger.setLevel(logging.INFO)
-#
-#     # formatter = logging.Formatter('%(name)s - %(asctime)s - '
-#     #                               '%(levelname)s - %(message)s',
-#     #                               datefmt='%Y-%m-%d %H:%M:%S')
-#     formatter = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
-#     stderr_handler = logging.StreamHandler()
-#     stderr_handler.setFormatter(formatter)
-#
-#     logger.addHandler(stderr_handler)
-
-
 def install_blast() -> None:
+    """
+    Installs BLAST executables to external dir
+    """
     logger = logging.getLogger(__name__)
     externalpath = get_external_path()
     base_url = 'https://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/{}'\
@@ -229,8 +226,8 @@ def install_blast() -> None:
         shutil.unpack_archive(out_file, externalpath, 'gztar')
     logger.info('Checking tblastn version.')
     try:
-        tblastn_ver: str = subprocess.check_output([tblastn, '-version'],
-                                                   stderr=subprocess.STDOUT)
+        tblastn_ver: bytes = subprocess.check_output([tblastn, '-version'],
+                                                     stderr=subprocess.STDOUT)
     except FileNotFoundError:
         msg = 'Unable to find tblastn executable in path or in provided dir ' \
               '({})'
@@ -291,8 +288,8 @@ def install_mafft() -> None:
                 os.chmod(os.path.join(root, exe), 0o755)
     logger.info('Checking mafft version.')
     try:
-        mafft_ver: str = subprocess.check_output([mafft, '--version'],
-                                                 stderr=subprocess.STDOUT)
+        mafft_ver: bytes = subprocess.check_output([mafft, '--version'],
+                                                   stderr=subprocess.STDOUT)
     except FileNotFoundError:
         msg = 'Unable to find mafft executable in path or in provided dir ' \
               '({})'
@@ -359,8 +356,8 @@ def install_iqtree() -> None:
             shutil.unpack_archive(out_file, externalpath, 'zip')
     logger.info('Checking iqtree version.')
     try:
-        iqtree_ver: str = subprocess.check_output([iqtree, '--version'],
-                                                  stderr=subprocess.STDOUT)
+        iqtree_ver: bytes = subprocess.check_output([iqtree, '--version'],
+                                                    stderr=subprocess.STDOUT)
     except FileNotFoundError:
         msg = 'Unable to find iqtree2 executable in path or in provided dir ' \
               '({})'
